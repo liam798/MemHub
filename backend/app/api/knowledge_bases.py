@@ -1,5 +1,6 @@
 """知识库 API"""
 import logging
+from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Query
@@ -75,6 +76,8 @@ def list_my_knowledge_bases(
     all_kbs = list({kb.id: kb for kb in owned + member_kbs}.values())
     if not all_kbs:
         return []
+
+    all_kbs.sort(key=lambda kb: kb.created_at or datetime.min, reverse=True)
 
     kb_ids = [kb.id for kb in all_kbs]
     owner_ids = sorted({kb.owner_id for kb in all_kbs})
