@@ -23,6 +23,7 @@ class KnowledgeBaseResponse(BaseModel):
     owner_id: int
     owner_username: str = ""
     created_at: str | None = None
+    updated_at: str | None = None
     document_count: int = 0
 
     class Config:

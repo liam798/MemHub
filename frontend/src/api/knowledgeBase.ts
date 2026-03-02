@@ -11,6 +11,7 @@ export interface KnowledgeBase {
   owner_id: number;
   owner_username?: string;
   created_at?: string;
+  updated_at?: string;
   document_count: number;
 }
 

@@ -44,6 +44,8 @@ def _kb_response(
     owner_usernames: dict[int, str] | None = None,
     doc_counts: dict[int, int] | None = None,
 ) -> KnowledgeBaseResponse:
+    created_at = kb.created_at
+    updated_at = kb.updated_at or kb.created_at
     return KnowledgeBaseResponse(
         id=kb.id,
         name=kb.name,
@@ -51,7 +53,8 @@ def _kb_response(
         visibility=kb.visibility,
         owner_id=kb.owner_id,
         owner_username=(owner_usernames or {}).get(kb.owner_id, ""),
-        created_at=kb.created_at.isoformat() if kb.created_at else None,
+        created_at=created_at.isoformat() if created_at else None,
+        updated_at=updated_at.isoformat() if updated_at else None,
         document_count=(doc_counts or {}).get(kb.id, 0),
     )
 
@@ -77,7 +80,10 @@ def list_my_knowledge_bases(
     if not all_kbs:
         return []
 
-    all_kbs.sort(key=lambda kb: kb.created_at or datetime.min, reverse=True)
+    all_kbs.sort(
+        key=lambda kb: (kb.updated_at or kb.created_at or datetime.min),
+        reverse=True,
+    )
 
     kb_ids = [kb.id for kb in all_kbs]
     owner_ids = sorted({kb.owner_id for kb in all_kbs})
