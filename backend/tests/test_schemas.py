@@ -2,6 +2,7 @@ import unittest
 
 from pydantic import ValidationError
 
+from app.core.config import settings
 from app.schemas.rag import BatchQueryRequest, QueryResponse
 
 
@@ -19,7 +20,7 @@ class SchemaTests(unittest.TestCase):
         with self.assertRaises(ValidationError):
             BatchQueryRequest(question="q", top_k=0)
         with self.assertRaises(ValidationError):
-            BatchQueryRequest(question="q", top_k=100)
+            BatchQueryRequest(question="q", top_k=settings.RAG_TOP_K_MAX + 1)
 
     def test_query_response_uses_independent_source_defaults(self):
         r1 = QueryResponse(answer="a1")
