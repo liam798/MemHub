@@ -2,7 +2,7 @@
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
@@ -267,6 +267,8 @@ def list_documents(
     kb_id: int,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    offset: int = Query(0, ge=0, description="跳过的记录数"),
+    limit: int = Query(100, ge=1, le=200, description="返回的最大记录数"),
 ):
     """文档列表"""
     kb = _get_kb(db, kb_id)
@@ -275,7 +277,14 @@ def list_documents(
     if not has_kb_access(kb, current_user, db):
         raise HTTPException(status_code=403, detail="无访问权限")
     from app.models.document import Document
-    docs = db.query(Document).filter(Document.knowledge_base_id == kb_id).order_by(Document.created_at.desc()).all()
+    docs = (
+        db.query(Document)
+        .filter(Document.knowledge_base_id == kb_id)
+        .order_by(Document.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
     return [
         DocumentResponse(
             id=d.id,

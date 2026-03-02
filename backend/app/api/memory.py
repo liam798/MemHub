@@ -147,6 +147,7 @@ def query_memory(
             continue
         if item.expires_at and item.expires_at < now:
             continue
+
         results.append(
             MemoryResponse(
                 id=item.id,
