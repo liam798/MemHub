@@ -1,7 +1,7 @@
 """知识库 API"""
 import logging
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Query
 from sqlalchemy.orm import Session
@@ -12,7 +12,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.deps import get_current_user, has_kb_access, require_kb_write, require_kb_admin, require_kb_owner
 from app.models.user import User
-from app.models.knowledge_base import KnowledgeBase, KnowledgeBaseMember, MemberRole
+from app.models.knowledge_base import KnowledgeBase, KnowledgeBaseMember, MemberRole, Visibility
 from app.schemas.knowledge_base import (
     KnowledgeBaseCreate,
     KnowledgeBaseUpdate,
@@ -67,23 +67,35 @@ def _get_kb(db: Session, kb_id: int) -> KnowledgeBase | None:
 def list_my_knowledge_bases(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    scope: Annotated[
+        Literal["joined", "public"],
+        Query(description="joined=我参与的(拥有+成员), public=公开知识库"),
+    ] = "joined",
 ):
-    """我的知识库列表（拥有的 + 有权限的）"""
-    owned = db.query(KnowledgeBase).filter(KnowledgeBase.owner_id == current_user.id).all()
-    member_kbs = (
-        db.query(KnowledgeBase)
-        .join(KnowledgeBaseMember)
-        .filter(KnowledgeBaseMember.user_id == current_user.id)
-        .all()
-    )
-    all_kbs = list({kb.id: kb for kb in owned + member_kbs}.values())
+    """知识库列表。scope=joined 返回我拥有或参与的知识库，scope=public 返回全部公开知识库。"""
+    if scope == "public":
+        all_kbs = (
+            db.query(KnowledgeBase)
+            .filter(KnowledgeBase.visibility == Visibility.PUBLIC)
+            .order_by(KnowledgeBase.updated_at.desc(), KnowledgeBase.created_at.desc())
+            .all()
+        )
+    else:
+        owned = db.query(KnowledgeBase).filter(KnowledgeBase.owner_id == current_user.id).all()
+        member_kbs = (
+            db.query(KnowledgeBase)
+            .join(KnowledgeBaseMember)
+            .filter(KnowledgeBaseMember.user_id == current_user.id)
+            .all()
+        )
+        all_kbs = list({kb.id: kb for kb in owned + member_kbs}.values())
+        all_kbs.sort(
+            key=lambda kb: (kb.updated_at or kb.created_at or datetime.min),
+            reverse=True,
+        )
+
     if not all_kbs:
         return []
-
-    all_kbs.sort(
-        key=lambda kb: (kb.updated_at or kb.created_at or datetime.min),
-        reverse=True,
-    )
 
     kb_ids = [kb.id for kb in all_kbs]
     owner_ids = sorted({kb.owner_id for kb in all_kbs})

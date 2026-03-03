@@ -55,33 +55,29 @@ def list_activities(
     current_user: Annotated[User, Depends(get_current_user)] = None,
     db: Annotated[Session, Depends(get_db)] = None,
 ):
-    """活动列表，支持筛选全部/我的动态"""
+    """活动列表，支持筛选全部/我的动态。已删除或无权限的知识库相关动态不展示。"""
     q = db.query(Activity).order_by(Activity.created_at.desc()).limit(limit * 2)  # 多取一些以便过滤
     if scope == "mine":
         q = q.filter(Activity.user_id == current_user.id)
     activities = q.all()
-    # 全部动态时只显示用户有权限的知识库相关活动
-    if scope == "all":
-        candidate_kb_ids = sorted({a.knowledge_base_id for a in activities if a.knowledge_base_id is not None})
-        kb_map = {}
-        if candidate_kb_ids:
-            kb_map = {
-                kb.id: kb
-                for kb in db.query(KnowledgeBase).filter(KnowledgeBase.id.in_(candidate_kb_ids)).all()
-            }
-        filtered = []
-        for a in activities:
-            if a.knowledge_base_id is None:
-                filtered.append(a)
-            else:
-                kb = kb_map.get(a.knowledge_base_id)
-                if kb and has_kb_access(kb, current_user, db):
-                    filtered.append(a)
-            if len(filtered) >= limit:
-                break
-        activities = filtered[:limit]
-    else:
-        activities = activities[:limit]
+    # 只保留：关联知识库仍存在且当前用户有权限的动态（已删除或无权限的 KB 不展示，knowledge_base_id 为空的也视为无效）
+    candidate_kb_ids = sorted({a.knowledge_base_id for a in activities if a.knowledge_base_id is not None})
+    kb_map = {}
+    if candidate_kb_ids:
+        kb_map = {
+            kb.id: kb
+            for kb in db.query(KnowledgeBase).filter(KnowledgeBase.id.in_(candidate_kb_ids)).all()
+        }
+    filtered = []
+    for a in activities:
+        if a.knowledge_base_id is None:
+            continue  # 无关联或关联被删（ON DELETE SET NULL）的不展示
+        kb = kb_map.get(a.knowledge_base_id)
+        if kb and has_kb_access(kb, current_user, db):
+            filtered.append(a)
+        if len(filtered) >= limit:
+            break
+    activities = filtered[:limit]
 
     kb_ids = sorted({a.knowledge_base_id for a in activities if a.knowledge_base_id is not None})
     kb_name_map: dict[int, str] = {}

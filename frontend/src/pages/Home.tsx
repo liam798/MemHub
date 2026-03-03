@@ -5,18 +5,22 @@ import { kbApi, KnowledgeBase } from "../api/knowledgeBase";
 import { ragApi } from "../api/rag";
 import { activityApi, Activity } from "../api/activity";
 
+type KbListTab = "public" | "joined";
+
 export default function Home() {
   const [selectedKbIds, setSelectedKbIds] = useState<number[]>([]);
   const [kbSelectOpen, setKbSelectOpen] = useState(false);
   const [kbSelectSearch, setKbSelectSearch] = useState("");
   const kbSelectRef = useRef<HTMLDivElement>(null);
-  const [list, setList] = useState<KnowledgeBase[]>([]);
+  const [listJoined, setListJoined] = useState<KnowledgeBase[]>([]);
+  const [listPublic, setListPublic] = useState<KnowledgeBase[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [visibility, setVisibility] = useState<"public" | "private">("private");
   const [error, setError] = useState("");
+  const [kbListTab, setKbListTab] = useState<KbListTab>("joined");
   const [searchQuery, setSearchQuery] = useState("");
   const [aiQuestion, setAiQuestion] = useState("");
   const [aiAnswer, setAiAnswer] = useState("");
@@ -29,18 +33,24 @@ export default function Home() {
   const feedFilterRef = useRef<HTMLDivElement>(null);
   const kbTriggerRef = useRef<HTMLButtonElement>(null);
 
-  const load = async () => {
+  const list = kbListTab === "joined" ? listJoined : listPublic;
+
+  const loadBoth = async () => {
     setLoading(true);
     try {
-      const { data } = await kbApi.list();
-      setList(data);
+      const [joinedRes, publicRes] = await Promise.all([
+        kbApi.list({ scope: "joined" }),
+        kbApi.list({ scope: "public" }),
+      ]);
+      setListJoined(joinedRes.data);
+      setListPublic(publicRes.data);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    load();
+    loadBoth();
   }, []);
 
   const [kbDropdownStyle, setKbDropdownStyle] = useState({ top: 0, left: 0 });
@@ -101,7 +111,7 @@ export default function Home() {
       setName("");
       setDescription("");
       setVisibility("private");
-      load();
+      loadBoth();
       loadActivities();
     } catch (err: unknown) {
       setError((err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || "创建失败");
@@ -119,14 +129,16 @@ export default function Home() {
   const handleAsk = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!aiQuestion.trim()) return;
-    if (list.length === 0) {
-      setAiAnswer("请先创建知识库");
+    const allSelectableKbs = [...listJoined, ...listPublic.filter((kb) => !listJoined.some((j) => j.id === kb.id))];
+    if (allSelectableKbs.length === 0) {
+      setAiAnswer("请先创建或选择知识库");
       return;
     }
     setAiLoading(true);
     setAiAnswer("");
     try {
-      const kbIds = selectedKbIds.length === 0 || selectedKbIds.length === list.length ? undefined : selectedKbIds;
+      const kbIds =
+        selectedKbIds.length === 0 || selectedKbIds.length === allSelectableKbs.length ? undefined : selectedKbIds;
       const { data } = await ragApi.batchQuery(aiQuestion, kbIds);
       setAiAnswer(data.answer);
     } catch {
@@ -136,9 +148,19 @@ export default function Home() {
     }
   };
 
-  const kbSelectFiltered = kbSelectSearch.trim()
-    ? list.filter((kb) => kb.name.toLowerCase().includes(kbSelectSearch.toLowerCase()))
-    : list;
+  const publicOnly = listPublic.filter((kb) => !listJoined.some((j) => j.id === kb.id));
+  const filterBySearch = (kbs: KnowledgeBase[]) =>
+    kbSelectSearch.trim()
+      ? kbs.filter(
+          (kb) =>
+            kb.name.toLowerCase().includes(kbSelectSearch.toLowerCase()) ||
+            (kb.owner_username || "").toLowerCase().includes(kbSelectSearch.toLowerCase())
+        )
+      : kbs;
+  const kbSelectJoinedFiltered = filterBySearch(listJoined);
+  const kbSelectPublicFiltered = filterBySearch(publicOnly);
+  const kbSelectHasResults = kbSelectJoinedFiltered.length > 0 || kbSelectPublicFiltered.length > 0;
+  const getKbById = (id: number) => listJoined.find((k) => k.id === id) ?? listPublic.find((k) => k.id === id);
 
   const toggleKb = (id: number) => {
     setSelectedKbIds((prev) =>
@@ -224,13 +246,41 @@ export default function Home() {
             placeholder="搜索知识库..."
             className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           />
+          <div className="flex mt-2 rounded-lg bg-slate-100 p-0.5">
+            <button
+              type="button"
+              onClick={() => setKbListTab("joined")}
+              className={`flex-1 py-1.5 text-xs font-medium rounded-md transition ${
+                kbListTab === "joined"
+                  ? "bg-white text-slate-800 shadow-sm"
+                  : "text-slate-600 hover:text-slate-800"
+              }`}
+            >
+              我参与的
+            </button>
+            <button
+              type="button"
+              onClick={() => setKbListTab("public")}
+              className={`flex-1 py-1.5 text-xs font-medium rounded-md transition ${
+                kbListTab === "public"
+                  ? "bg-white text-slate-800 shadow-sm"
+                  : "text-slate-600 hover:text-slate-800"
+              }`}
+            >
+              公开的
+            </button>
+          </div>
         </div>
         <div className="flex-1 overflow-auto">
           {loading ? (
             <div className="p-4 text-slate-500 text-sm">加载中...</div>
           ) : filteredList.length === 0 ? (
             <div className="p-4 text-slate-500 text-sm">
-              {list.length === 0 ? "暂无知识库" : "无匹配结果"}
+              {list.length === 0
+                ? kbListTab === "public"
+                  ? "暂无公开知识库"
+                  : "暂无参与的知识库"
+                : "无匹配结果"}
             </div>
           ) : (
             <ul className="pt-1 pb-2">
@@ -283,7 +333,7 @@ export default function Home() {
                 }}
                 onFocus={() => setInputFocused(true)}
                 onBlur={() => setInputFocused(false)}
-                placeholder="Ask anything..."
+                placeholder="输入你的问题..."
                 className="w-full px-4 py-3 text-sm resize-none focus:outline-none focus:ring-0 border-0 placeholder:text-slate-500"
                 rows={4}
                 disabled={aiLoading}
@@ -309,7 +359,7 @@ export default function Home() {
                         ? "全部知识库"
                         : selectedKbIds.length === 1
                           ? (() => {
-                              const k = list.find((kb) => kb.id === selectedKbIds[0]);
+                              const k = getKbById(selectedKbIds[0]);
                               return k ? (k.owner_username ? `${k.owner_username}/${k.name}` : k.name) : "已选 1 个";
                             })()
                           : `已选 ${selectedKbIds.length} 个`}
@@ -340,39 +390,80 @@ export default function Home() {
                             />
                           </div>
                         </div>
-                        <div className="max-h-56 overflow-y-auto">
-                          {kbSelectFiltered.length === 0 ? (
+                        <div className="max-h-64 overflow-y-auto">
+                          {!kbSelectHasResults ? (
                             <div className="py-6 text-center text-sm text-slate-500">无匹配结果</div>
                           ) : (
-                            kbSelectFiltered.map((kb) => {
-                              const checked = selectedKbIds.includes(kb.id);
-                              return (
-                                <label
-                                  key={kb.id}
-                                  className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-slate-50 border-l-2 ${
-                                    checked ? "bg-slate-50 border-primary-500" : "border-transparent"
-                                  }`}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={checked}
-                                    onChange={() => toggleKb(kb.id)}
-                                    className="rounded border-slate-300 text-primary-600 focus:ring-primary-500"
-                                  />
-                                  <span className="w-5 h-5 min-w-5 flex items-center justify-center shrink-0 text-slate-500">
-                                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-                                      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-                                      <path d="M12 6v12" />
-                                      <path d="M10 18l2-3 2 3" />
-                                    </svg>
-                                  </span>
-                                  <span className="text-sm text-slate-700 truncate">
-                                    {kb.owner_username ? `${kb.owner_username}/${kb.name}` : kb.name}
-                                  </span>
-                                </label>
-                              );
-                            })
+                            <>
+                              {kbSelectJoinedFiltered.length > 0 && (
+                                <div className="py-1">
+                                  <div className="px-3 py-1.5 text-xs font-medium text-slate-500">我参与的</div>
+                                  {kbSelectJoinedFiltered.map((kb) => {
+                                    const checked = selectedKbIds.includes(kb.id);
+                                    return (
+                                      <label
+                                        key={kb.id}
+                                        className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-slate-50 border-l-2 ${
+                                          checked ? "bg-slate-50 border-primary-500" : "border-transparent"
+                                        }`}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={checked}
+                                          onChange={() => toggleKb(kb.id)}
+                                          className="rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                                        />
+                                        <span className="w-5 h-5 min-w-5 flex items-center justify-center shrink-0 text-slate-500">
+                                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                                            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+                                            <path d="M12 6v12" />
+                                            <path d="M10 18l2-3 2 3" />
+                                          </svg>
+                                        </span>
+                                        <span className="text-sm text-slate-700 truncate">
+                                          {kb.owner_username ? `${kb.owner_username}/${kb.name}` : kb.name}
+                                        </span>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                              {kbSelectPublicFiltered.length > 0 && (
+                                <div className="py-1 border-t border-slate-100">
+                                  <div className="px-3 py-1.5 text-xs font-medium text-slate-500">公开知识库</div>
+                                  {kbSelectPublicFiltered.map((kb) => {
+                                    const checked = selectedKbIds.includes(kb.id);
+                                    return (
+                                      <label
+                                        key={kb.id}
+                                        className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-slate-50 border-l-2 ${
+                                          checked ? "bg-slate-50 border-primary-500" : "border-transparent"
+                                        }`}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={checked}
+                                          onChange={() => toggleKb(kb.id)}
+                                          className="rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                                        />
+                                        <span className="w-5 h-5 min-w-5 flex items-center justify-center shrink-0 text-slate-500">
+                                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                                            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+                                            <path d="M12 6v12" />
+                                            <path d="M10 18l2-3 2 3" />
+                                          </svg>
+                                        </span>
+                                        <span className="text-sm text-slate-700 truncate">
+                                          {kb.owner_username ? `${kb.owner_username}/${kb.name}` : kb.name}
+                                        </span>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
                       </div>,

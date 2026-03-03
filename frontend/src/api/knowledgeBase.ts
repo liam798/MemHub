@@ -34,7 +34,8 @@ export interface Document {
 }
 
 export const kbApi = {
-  list: () => client.get<KnowledgeBase[]>("/knowledge-bases"),
+  list: (params?: { scope?: "joined" | "public" }) =>
+    client.get<KnowledgeBase[]>("/knowledge-bases", { params }),
   create: (data: { name: string; description?: string; visibility?: Visibility }) =>
     client.post<KnowledgeBase>("/knowledge-bases", data),
   get: (id: number) => client.get<KnowledgeBase>(`/knowledge-bases/${id}`),
