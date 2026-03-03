@@ -21,6 +21,7 @@ class DocumentResponse(BaseModel):
     file_size: int
     chunk_count: int
     created_at: str | None = None
+    updated_at: str | None = None
     is_rule: bool = False  # 是否为规则（原文传给模型，不向量化）
 
     class Config:

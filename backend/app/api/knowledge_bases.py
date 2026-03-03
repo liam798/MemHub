@@ -26,11 +26,10 @@ from app.models.document import Document, CONTENT_TYPE_RULE
 from app.services.knowledge_base import create_knowledge_base, add_member, update_member_role, remove_member
 from app.services.activity import record_activity
 from app.models.activity import ActivityAction
-from app.rag.pipeline import chunk_and_embed
 
 router = APIRouter(prefix="/knowledge-bases", tags=["知识库"])
 logger = logging.getLogger(__name__)
-ALLOWED_UPLOAD_EXTENSIONS = {".txt", ".md", ".pdf", ".docx"}
+ALLOWED_UPLOAD_EXTENSIONS = {".md"}
 
 
 def _file_extension(filename: str) -> str:
@@ -252,35 +251,26 @@ def upload_document(
     if not content.strip():
         raise HTTPException(status_code=400, detail="文件内容为空或格式不支持")
 
+    if not filename.lower().endswith(".md"):
+        filename = f"{filename}.md"
+
     doc = Document(
         knowledge_base_id=kb_id,
         filename=filename,
-        content_type=file.content_type or "",
+        content_type=CONTENT_TYPE_RULE,
         file_size=len(raw),
+        chunk_count=0,
+        content=content,
     )
     db.add(doc)
     db.commit()
     db.refresh(doc)
 
-    try:
-        chunk_count = chunk_and_embed(kb_id, content, {"document_id": doc.id, "filename": filename})
-        doc.chunk_count = chunk_count
-        db.commit()
-    except Exception:
-        db.rollback()
-        logger.exception("chunk_and_embed failed kb_id=%s document_id=%s", kb_id, doc.id)
-        db.delete(doc)
-        db.commit()
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="文档向量化失败，请稍后重试",
-        )
-
     record_activity(
         db, current_user.id, ActivityAction.UPLOAD_DOC, kb_id,
         {"filename": filename, "document_id": doc.id},
     )
-    return {"document_id": doc.id, "chunk_count": chunk_count}
+    return {"document_id": doc.id}
 
 
 @router.post("/{kb_id}/rules")
@@ -347,6 +337,7 @@ def list_documents(
             file_size=d.file_size or 0,
             chunk_count=d.chunk_count or 0,
             created_at=d.created_at.isoformat() if d.created_at else None,
+            updated_at=(d.updated_at or d.created_at).isoformat() if (d.updated_at or d.created_at) else None,
             is_rule=(d.content_type == CONTENT_TYPE_RULE),
         )
         for d in docs
@@ -380,6 +371,7 @@ def get_document(
         file_size=doc.file_size or 0,
         chunk_count=doc.chunk_count or 0,
         created_at=doc.created_at.isoformat() if doc.created_at else None,
+        updated_at=(doc.updated_at or doc.created_at).isoformat() if (doc.updated_at or doc.created_at) else None,
         is_rule=(doc.content_type == CONTENT_TYPE_RULE),
         content=content,
     )

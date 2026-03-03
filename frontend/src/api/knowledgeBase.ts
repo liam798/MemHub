@@ -31,6 +31,7 @@ export interface Document {
   file_size: number;
   chunk_count: number;
   created_at?: string;
+  updated_at?: string;
   is_rule?: boolean;
 }
 
@@ -59,7 +60,7 @@ export const kbApi = {
   uploadDocument: (id: number, file: File) => {
     const form = new FormData();
     form.append("file", file);
-    return client.post<{ document_id: number; chunk_count: number }>(
+    return client.post<{ document_id: number }>(
       `/knowledge-bases/${id}/documents`,
       form,
       { headers: { "Content-Type": "multipart/form-data" } }

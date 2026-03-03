@@ -14,10 +14,14 @@ function formatSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function getFileType(filename: string) {
-  const ext = filename.split(".").pop()?.toUpperCase() || "";
-  const map: Record<string, string> = { TXT: "TXT", PDF: "PDF", DOCX: "DOCX", MD: "MD" };
-  return map[ext] || ext || "FILE";
+function formatUpdatedAt(iso?: string | null) {
+  if (!iso) return "—";
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return "—";
+  }
 }
 
 const IconDownload = () => (
@@ -121,7 +125,7 @@ export default function KnowledgeBase() {
 
   const handleEditDoc = async (doc: { id: number; filename: string; is_rule?: boolean }) => {
     if (!doc.is_rule) {
-      alert("仅笔记可编辑");
+      alert("仅文档可编辑");
       return;
     }
     try {
@@ -365,7 +369,7 @@ export default function KnowledgeBase() {
           >
             <span className="inline-flex items-center gap-1.5">
               <IconFolder />
-              文件
+              文档
               {documents.length > 0 && (
                 <span className="ml-0.5 px-1.5 py-0.5 rounded text-xs bg-slate-100 text-slate-500 font-normal">
                   {documents.length}
@@ -412,12 +416,12 @@ export default function KnowledgeBase() {
           <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-lg text-sm font-medium cursor-pointer hover:bg-primary-700 transition-colors shadow-sm">
             <input
               type="file"
-              accept=".txt,.md,.pdf,.docx"
+              accept=".md"
               onChange={handleUpload}
               disabled={uploading}
               className="hidden"
             />
-            {uploading ? "上传中..." : "上传文件"}
+            {uploading ? "上传中..." : "上传文档"}
           </label>
           <button
             onClick={() => {
@@ -429,12 +433,12 @@ export default function KnowledgeBase() {
             }}
             className="px-4 py-2.5 border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 hover:border-slate-300 transition-colors"
           >
-            新建笔记
+            新建文档
           </button>
           </div>
       </div>
 
-      {/* 文件表格 */}
+      {/* 文档表格 */}
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           <table className="w-full">
             <thead>
@@ -442,22 +446,21 @@ export default function KnowledgeBase() {
                 <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 w-10">
                   <input type="checkbox" className="rounded" />
                 </th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">标题 / 文件名</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">类型</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">标题</th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">大小</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">解析状态</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">最后更新</th>
                 <th className="text-center py-3 px-4 text-sm font-medium text-slate-600">操作</th>
               </tr>
             </thead>
             <tbody>
               {filteredDocuments.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-16 text-center">
+                  <td colSpan={5} className="py-16 text-center">
                     <div className="text-slate-400 text-sm">
                       {documents.length === 0 ? (
                         <>
                           <span className="block text-4xl mb-2">📄</span>
-                          <span>暂无文档，上传文件或新建笔记开始使用</span>
+                          <span>暂无文档，上传文档或新建文档开始使用</span>
                         </>
                       ) : (
                         "未找到匹配的文档"
@@ -484,23 +487,8 @@ export default function KnowledgeBase() {
                         <span className="font-medium text-slate-800">{doc.filename}</span>
                       )}
                     </td>
-                    <td className="py-3 px-4">
-                      {doc.is_rule ? (
-                        <span className="inline-flex px-2 py-0.5 rounded text-xs bg-violet-50 text-violet-700">笔记</span>
-                      ) : (
-                        <span className="text-slate-600 text-sm">{getFileType(doc.filename)}</span>
-                      )}
-                    </td>
                     <td className="py-3 px-4 text-slate-600">{formatSize(doc.file_size)}</td>
-                    <td className="py-3 px-4">
-                      {doc.is_rule ? (
-                        <span className="inline-flex px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-600">原文传给模型</span>
-                      ) : (
-                        <span className={`inline-flex px-2 py-0.5 rounded text-xs ${doc.chunk_count > 0 ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
-                          {doc.chunk_count > 0 ? "已解析" : "待解析"}
-                        </span>
-                      )}
-                    </td>
+                    <td className="py-3 px-4 text-slate-500 text-sm">{formatUpdatedAt(doc.updated_at ?? doc.created_at)}</td>
                     <td className="py-3 px-4 text-center">
                       <div className="flex items-center justify-center gap-1 text-slate-400">
                         <button
@@ -772,11 +760,11 @@ export default function KnowledgeBase() {
         </div>
       )}
 
-      {/* 新建/编辑笔记弹窗 - 与新建笔记相同 UI（MD 编辑器） */}
+      {/* 新建/编辑文档弹窗 - 与新建文档相同 UI（MD 编辑器） */}
       {showNoteModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-            <h2 className="text-lg font-semibold mb-1">{noteDocId != null ? "编辑笔记" : "新建笔记"}</h2>
+            <h2 className="text-lg font-semibold mb-1">{noteDocId != null ? "编辑文档" : "新建文档"}</h2>
             <p className="text-sm text-slate-500 mb-4">将原文传给大模型，不参与向量检索，适合规则、记忆、审查事项等内容。</p>
             <form
               onSubmit={async (e) => {
@@ -809,7 +797,7 @@ export default function KnowledgeBase() {
                   type="text"
                   value={noteTitle}
                   onChange={(e) => setNoteTitle(e.target.value)}
-                  placeholder="输入笔记标题"
+                  placeholder="输入文档标题"
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                   required
                 />
@@ -849,7 +837,7 @@ export default function KnowledgeBase() {
         </div>
       )}
 
-      {/* 查看笔记弹窗 - 渲染 Markdown */}
+      {/* 查看文档弹窗 - 渲染 Markdown */}
       {showViewModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowViewModal(false)}>
           <div className="bg-white rounded-xl p-6 w-full max-w-3xl max-h-[85vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
