@@ -59,11 +59,10 @@ npm run dev
 CREATE EXTENSION IF NOT EXISTS vector;
 ```
 
-## 项目结构
+### 项目结构
 
 ```
 MemHub/
-├── skill.md          # Agent Skill 说明（前端通过 Vite 提供 /skill.md）
 ├── backend/          # FastAPI 后端
 │   ├── app/
 │   │   ├── api/      # API 路由
@@ -75,6 +74,7 @@ MemHub/
 │   └── alembic/      # 数据库迁移
 ├── frontend/         # React 前端
 ├── scripts/          # 一键安装与启动脚本
+├── SKILL.md          # Agent Skill 说明
 └── README.md
 ```
 
