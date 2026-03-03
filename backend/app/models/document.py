@@ -25,6 +25,7 @@ class Document(Base):
     chunk_count = Column(Integer, default=0)
     content = Column(Text, nullable=True)  # 规则类文档的原文，不向量化
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # 关系
     knowledge_base = relationship("KnowledgeBase", back_populates="documents")

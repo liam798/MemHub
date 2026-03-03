@@ -11,8 +11,6 @@ from langchain_core.documents import Document
 from app.core.config import settings
 from app.rag.vector_store import (
     add_documents_to_kb,
-    similarity_search,
-    similarity_search_with_score,
 )
 
 logger = logging.getLogger(__name__)
@@ -138,33 +136,17 @@ def query_kbs(
     rule_context: str | None = None,
 ) -> tuple[str, list[dict]]:
     """
-    多知识库 RAG 问答。rule_context 为规则原文，将优先注入系统提示。
+    多知识库问答：仅使用知识库内 MD/规则原文，不做向量检索。
     """
-    top_k = _safe_top_k(top_k)
-    all_scored: list[tuple[Document, float]] = []
-    for kb_id in kb_ids:
-        for doc, score in similarity_search_with_score(kb_id, question, k=top_k):
-            doc.metadata = doc.metadata or {}
-            doc.metadata["_kb_id"] = kb_id
-            all_scored.append((doc, score))
-    if not all_scored and not (rule_context and rule_context.strip()):
-        return "知识库中暂无相关文档，请先上传文档或添加规则。", []
-    docs = []
-    context = ""
-    if all_scored:
-        all_scored.sort(key=lambda x: x[1])
-        docs = [d for d, _ in all_scored[:top_k]]
-        docs = _filter_expired_docs(docs)
-        context = format_docs(docs)
-    if not context.strip() and not (rule_context and rule_context.strip()):
-        return "知识库中暂无相关文档，请先上传文档或添加规则。", []
+    context = (rule_context or "").strip()
+    if not context:
+        return "知识库中暂无文档内容，请先上传或新建文档。", []
     try:
-        answer = _generate_answer(context or "(无检索片段)", question, rule_context=rule_context)
+        answer = _generate_answer(context, question, rule_context=rule_context)
     except Exception as exc:
         logger.warning("query_kbs llm degraded: %s", exc)
-        answer = _fallback_answer_from_docs(docs, question) if docs else "暂无可用内容，请先上传文档或添加规则。"
-    sources = _build_sources(docs)
-    return answer, sources
+        answer = "暂时无法生成回答，请检查 OpenAI 配置或稍后重试。"
+    return answer, []
 
 
 def query_kb(
@@ -174,18 +156,14 @@ def query_kb(
     rule_context: str | None = None,
 ) -> tuple[str, list[dict]]:
     """
-    RAG 问答：检索 + 生成。rule_context 为规则原文，将优先注入系统提示。
+    知识库问答：仅使用知识库内 MD/规则原文，不做向量检索。
     """
-    top_k = _safe_top_k(top_k)
-    docs = similarity_search(kb_id, question, k=top_k)
-    docs = _filter_expired_docs(docs)
-    context = format_docs(docs) if docs else ""
-    if not context.strip() and not (rule_context and rule_context.strip()):
-        return "知识库中暂无相关文档，请先上传文档或添加规则。", []
+    context = (rule_context or "").strip()
+    if not context:
+        return "知识库中暂无文档内容，请先上传或新建文档。", []
     try:
-        answer = _generate_answer(context or "(无检索片段)", question, rule_context=rule_context)
+        answer = _generate_answer(context, question, rule_context=rule_context)
     except Exception as exc:
         logger.warning("query_kb llm degraded: %s", exc)
-        answer = _fallback_answer_from_docs(docs, question) if docs else "暂无可用内容，请先上传文档或添加规则。"
-    sources = _build_sources(docs)
-    return answer, sources
+        answer = "暂时无法生成回答，请检查 OpenAI 配置或稍后重试。"
+    return answer, []

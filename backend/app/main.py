@@ -3,13 +3,15 @@ import asyncio
 import logging
 import time
 import uuid
+from pathlib import Path
 
-from fastapi import FastAPI
-from fastapi import Request
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
+
+SKILL_PLACEHOLDER = "__MEMHUB_ORIGIN__"
 from app.core.database import check_db_health
 from app.api.auth import router as auth_router
 from app.api.users import router as users_router
@@ -79,6 +81,34 @@ async def request_context_middleware(request: Request, call_next):
     return response
 
 
+def _skill_md_path() -> Path:
+    if settings.SKILL_MD_PATH:
+        return Path(settings.SKILL_MD_PATH)
+    # 默认：项目根目录 SKILL.md（backend/app/main.py -> 上级两级为 backend，再上级为项目根）
+    root = Path(__file__).resolve().parent.parent.parent
+    return root / "SKILL.md"
+
+
+@app.get("/skill.md")
+async def skill_md(request: Request) -> Response:
+    """返回 Agent Skill 文档，按当前请求的域名/IP 动态替换占位符。"""
+    path = _skill_md_path()
+    if not path.exists():
+        return Response(content="SKILL.md not found", status_code=404)
+    body = path.read_text(encoding="utf-8")
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host") or "localhost"
+    proto = request.headers.get("x-forwarded-proto")
+    if proto is None:
+        proto = "https" if request.url.scheme == "https" else "http"
+    origin = f"{proto}://{host}"
+    body = body.replace(SKILL_PLACEHOLDER, origin)
+    return Response(
+        content=body,
+        media_type="text/markdown; charset=utf-8",
+        headers={"Cache-Control": "public, max-age=0"},
+    )
+
+
 @app.get("/")
 def root():
     return {"message": "MemHub API", "docs": "/docs"}
@@ -98,3 +128,65 @@ def health_ready():
             content={"status": "degraded", "database": reason},
         )
     return {"status": "ok", "database": "ok"}
+
+
+@app.get("/health/openai")
+def health_openai():
+    """在后端进程内用 curl 请求 https://api.openai.com，仅验证本进程能否连通该域名（含代理）。"""
+    import subprocess
+    try:
+        start = time.perf_counter()
+        r = subprocess.run(
+            ["curl", "-s", "-o", "/dev/null", "-w", "%{http_code}", "--connect-timeout", "10", "--max-time", "15", "https://api.openai.com"],
+            capture_output=True,
+            text=True,
+            timeout=16,
+            env=None,  # 继承当前进程环境（含 HTTP_PROXY/HTTPS_PROXY）
+        )
+        latency_ms = int((time.perf_counter() - start) * 1000)
+        if r.returncode != 0:
+            return JSONResponse(
+                status_code=503,
+                content={"status": "unreachable", "detail": r.stderr or f"curl exit {r.returncode}", "latency_ms": latency_ms},
+            )
+        code = (r.stdout or "").strip()
+        if code and code != "000":
+            return {"status": "ok", "latency_ms": latency_ms, "http_code": code}
+        return JSONResponse(
+            status_code=503,
+            content={"status": "unreachable", "detail": "未收到有效响应", "latency_ms": latency_ms},
+        )
+    except FileNotFoundError:
+        return JSONResponse(status_code=503, content={"status": "unreachable", "detail": "未找到 curl 命令"})
+    except subprocess.TimeoutExpired:
+        return JSONResponse(status_code=503, content={"status": "unreachable", "detail": "连接超时"})
+    except Exception as e:
+        logger.exception("health_openai curl failed")
+        return JSONResponse(status_code=503, content={"status": "unreachable", "detail": str(e)})
+
+
+@app.get("/health/openai-rag")
+def health_openai_rag():
+    """用 RAG 同款 httpx 客户端请求 api.openai.com，验证 query 接口实际使用的网络路径是否可达。"""
+    try:
+        from app.rag.vector_store import _openai_httpx_clients
+        sync_client, _ = _openai_httpx_clients()
+        try:
+            start = time.perf_counter()
+            r = sync_client.get("https://api.openai.com", timeout=10.0)
+            latency_ms = int((time.perf_counter() - start) * 1000)
+            code = str(r.status_code)
+            if code and code != "000":
+                return {"status": "ok", "latency_ms": latency_ms, "http_code": code, "via": "httpx"}
+            return JSONResponse(
+                status_code=503,
+                content={"status": "unreachable", "detail": "未收到有效响应", "latency_ms": latency_ms, "via": "httpx"},
+            )
+        finally:
+            sync_client.close()
+    except (Exception, ImportError) as e:
+        logger.exception("health_openai_rag httpx failed")
+        return JSONResponse(
+            status_code=503,
+            content={"status": "unreachable", "detail": str(e), "via": "httpx"},
+        )

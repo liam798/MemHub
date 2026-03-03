@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     REQUEST_TIMEOUT_SECONDS: int = 180
     MAX_UPLOAD_FILE_SIZE_MB: int = 25
     ALLOW_DESTRUCTIVE_MIGRATIONS: bool = False
+    # Agent Skill 文件路径，为空则使用项目根目录 SKILL.md
+    SKILL_MD_PATH: str = ""
 
     @cached_property
     def cors_origins(self) -> list[str]:

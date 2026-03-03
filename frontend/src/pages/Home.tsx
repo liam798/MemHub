@@ -198,9 +198,9 @@ export default function Home() {
     if (a.action === "create_kb") return "创建了知识库";
     if (a.action === "upload_doc") return "上传了文档";
     if (a.action === "add_member") return "添加了成员";
-    if (a.action === "create_note") return "新建了笔记";
-    if (a.action === "update_note") return "修改了笔记";
-    if (a.action === "delete_note") return "删除了笔记";
+    if (a.action === "create_note") return "新建了文档";
+    if (a.action === "update_note") return "修改了文档";
+    if (a.action === "delete_note") return "删除了文档";
     return a.action_label;
   };
 

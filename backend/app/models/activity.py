@@ -12,9 +12,9 @@ class ActivityAction(str, enum.Enum):
     CREATE_KB = "create_kb"       # 创建知识库
     UPLOAD_DOC = "upload_doc"     # 上传文档
     ADD_MEMBER = "add_member"     # 添加成员
-    CREATE_NOTE = "create_note"   # 新建笔记
-    UPDATE_NOTE = "update_note"   # 修改笔记
-    DELETE_NOTE = "delete_note"   # 删除笔记
+    CREATE_NOTE = "create_note"   # 新建文档
+    UPDATE_NOTE = "update_note"   # 修改文档
+    DELETE_NOTE = "delete_note"   # 删除文档
 
 
 class Activity(Base):

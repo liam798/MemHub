@@ -1,4 +1,5 @@
 """RAG 问答 API"""
+import asyncio
 import logging
 from typing import Annotated
 
@@ -7,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.database import get_db
 
 logger = logging.getLogger(__name__)
@@ -70,8 +72,13 @@ def _get_accessible_kb_ids(db: Session, user: User) -> list[int]:
     return [kb_id for (kb_id,) in rows]
 
 
+def _rag_timeout_seconds() -> int:
+    """RAG 调用硬超时：略大于单次 OpenAI 超时，避免长时间挂起。"""
+    return getattr(settings, "OPENAI_REQUEST_TIMEOUT", 60) + 10
+
+
 @router.post("/knowledge-bases/query", response_model=QueryResponse)
-def batch_query(
+async def batch_query(
     data: BatchQueryRequest,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
@@ -89,7 +96,16 @@ def batch_query(
         raise HTTPException(status_code=400, detail="暂无可用知识库，请先创建或加入知识库")
     rule_context = _get_rule_context(db, kb_ids)
     try:
-        answer, sources = query_kbs(kb_ids, data.question, data.top_k, rule_context=rule_context)
+        answer, sources = await asyncio.wait_for(
+            asyncio.to_thread(query_kbs, kb_ids, data.question, data.top_k, rule_context=rule_context),
+            timeout=_rag_timeout_seconds(),
+        )
+    except asyncio.TimeoutError:
+        logger.warning("RAG batch_query 超时 (limit=%ss)", _rag_timeout_seconds())
+        raise HTTPException(
+            status_code=504,
+            detail="OpenAI 请求超时，请检查本机代理（HTTP_PROXY/HTTPS_PROXY）或稍后重试",
+        ) from None
     except (TimeoutError, httpx.TimeoutException, httpx.ConnectError) as e:
         logger.warning("RAG OpenAI 请求失败: %s", e)
         raise HTTPException(
@@ -108,7 +124,7 @@ def batch_query(
 
 
 @router.post("/knowledge-bases/{kb_id}/query", response_model=QueryResponse)
-def query(
+async def query(
     kb_id: int,
     data: QueryRequest,
     current_user: Annotated[User, Depends(get_current_user)],
@@ -123,7 +139,16 @@ def query(
 
     rule_context = _get_rule_context(db, [kb_id])
     try:
-        answer, sources = query_kb(kb_id, data.question, data.top_k, rule_context=rule_context)
+        answer, sources = await asyncio.wait_for(
+            asyncio.to_thread(query_kb, kb_id, data.question, data.top_k, rule_context=rule_context),
+            timeout=_rag_timeout_seconds(),
+        )
+    except asyncio.TimeoutError:
+        logger.warning("RAG query kb_id=%s 超时 (limit=%ss)", kb_id, _rag_timeout_seconds())
+        raise HTTPException(
+            status_code=504,
+            detail="OpenAI 请求超时，请检查本机代理（HTTP_PROXY/HTTPS_PROXY）或稍后重试",
+        ) from None
     except (TimeoutError, httpx.TimeoutException, httpx.ConnectError) as e:
         logger.warning("RAG OpenAI 请求失败: %s", e)
         raise HTTPException(
