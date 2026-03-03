@@ -148,7 +148,7 @@ API_KEY = "用户提供的API_Key"
 
 def rag_query(question: str, kb_ids: list[int] | None = None):
     resp = httpx.post(
-        f"{API_URL}/knowledge-bases/query",
+        f"{BAE_URL}/knowledge-bases/query",
         headers={"X-API-Key": API_KEY, "Content-Type": "application/json"},
         json={"question": question, "top_k": 5, "kb_ids": kb_ids or []},
     )

@@ -4,6 +4,7 @@ import { readFileSync, writeFileSync } from "fs";
 import { resolve } from "path";
 
 const MEMHUB_ORIGIN_PLACEHOLDER = "__MEMHUB_ORIGIN__";
+const SKILL_MD_PATH = resolve(process.cwd(), "..", "SKILL.md");
 
 export default defineConfig({
   plugins: [
@@ -13,7 +14,7 @@ export default defineConfig({
       configureServer(server) {
         const skillHandler = (req: any, res: any, next: () => void) => {
           if (req.url === "/skill.md" || req.url?.startsWith("/skill.md?")) {
-            const file = resolve(process.cwd(), "public/skill.md");
+            const file = SKILL_MD_PATH;
             let body = readFileSync(file, "utf-8");
             const host = req.headers.host || "localhost:3000";
             const protocol =
@@ -33,7 +34,7 @@ export default defineConfig({
       },
       writeBundle() {
         const out = resolve(process.cwd(), "dist/skill.md");
-        const file = resolve(process.cwd(), "public/skill.md");
+        const file = SKILL_MD_PATH;
         let body = readFileSync(file, "utf-8");
         const origin =
           process.env.VITE_MEMHUB_ORIGIN || MEMHUB_ORIGIN_PLACEHOLDER;
