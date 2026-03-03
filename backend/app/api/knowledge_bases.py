@@ -21,7 +21,8 @@ from app.schemas.knowledge_base import (
     MemberUpdate,
     MemberResponse,
 )
-from app.schemas.document import DocumentResponse
+from app.schemas.document import DocumentResponse, DocumentDetailResponse, CreateRuleRequest, UpdateRuleRequest
+from app.models.document import Document, CONTENT_TYPE_RULE
 from app.services.knowledge_base import create_knowledge_base, add_member, update_member_role, remove_member
 from app.services.activity import record_activity
 from app.models.activity import ActivityAction
@@ -251,7 +252,6 @@ def upload_document(
     if not content.strip():
         raise HTTPException(status_code=400, detail="文件内容为空或格式不支持")
 
-    from app.models.document import Document
     doc = Document(
         knowledge_base_id=kb_id,
         filename=filename,
@@ -283,6 +283,40 @@ def upload_document(
     return {"document_id": doc.id, "chunk_count": chunk_count}
 
 
+@router.post("/{kb_id}/rules")
+def create_rule(
+    kb_id: int,
+    data: CreateRuleRequest,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    """新建规则：原文传给大模型，不向量化。用于 RULE、审查事项等需原文生效的内容。"""
+    kb = _get_kb(db, kb_id)
+    if not kb:
+        raise HTTPException(status_code=404, detail="知识库不存在")
+    if not require_kb_write(kb, current_user, db):
+        raise HTTPException(status_code=403, detail="无写权限")
+    filename = data.title.strip()
+    if not filename.endswith(".md"):
+        filename = f"{filename}.md"
+    doc = Document(
+        knowledge_base_id=kb_id,
+        filename=filename,
+        content_type=CONTENT_TYPE_RULE,
+        file_size=len((data.content or "").encode("utf-8")),
+        chunk_count=0,
+        content=data.content or "",
+    )
+    db.add(doc)
+    db.commit()
+    db.refresh(doc)
+    record_activity(
+        db, current_user.id, ActivityAction.CREATE_NOTE, kb_id,
+        {"filename": filename, "document_id": doc.id, "rule": True},
+    )
+    return {"document_id": doc.id}
+
+
 @router.get("/{kb_id}/documents", response_model=list[DocumentResponse])
 def list_documents(
     kb_id: int,
@@ -297,7 +331,6 @@ def list_documents(
         raise HTTPException(status_code=404, detail="知识库不存在")
     if not has_kb_access(kb, current_user, db):
         raise HTTPException(status_code=403, detail="无访问权限")
-    from app.models.document import Document
     docs = (
         db.query(Document)
         .filter(Document.knowledge_base_id == kb_id)
@@ -314,9 +347,110 @@ def list_documents(
             file_size=d.file_size or 0,
             chunk_count=d.chunk_count or 0,
             created_at=d.created_at.isoformat() if d.created_at else None,
+            is_rule=(d.content_type == CONTENT_TYPE_RULE),
         )
         for d in docs
     ]
+
+
+@router.get("/{kb_id}/documents/{doc_id}", response_model=DocumentDetailResponse)
+def get_document(
+    kb_id: int,
+    doc_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    """获取文档详情，规则类返回 content"""
+    kb = _get_kb(db, kb_id)
+    if not kb:
+        raise HTTPException(status_code=404, detail="知识库不存在")
+    if not has_kb_access(kb, current_user, db):
+        raise HTTPException(status_code=403, detail="无访问权限")
+    doc = db.query(Document).filter(
+        Document.knowledge_base_id == kb_id,
+        Document.id == doc_id,
+    ).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="文档不存在")
+    content = (doc.content if doc.content_type == CONTENT_TYPE_RULE else None) or None
+    return DocumentDetailResponse(
+        id=doc.id,
+        filename=doc.filename,
+        content_type=doc.content_type or "",
+        file_size=doc.file_size or 0,
+        chunk_count=doc.chunk_count or 0,
+        created_at=doc.created_at.isoformat() if doc.created_at else None,
+        is_rule=(doc.content_type == CONTENT_TYPE_RULE),
+        content=content,
+    )
+
+
+@router.patch("/{kb_id}/documents/{doc_id}")
+def update_document(
+    kb_id: int,
+    doc_id: int,
+    body: UpdateRuleRequest,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    """更新文档：仅规则类文档可更新，可修改标题与正文。"""
+    kb = _get_kb(db, kb_id)
+    if not kb:
+        raise HTTPException(status_code=404, detail="知识库不存在")
+    if not require_kb_write(kb, current_user, db):
+        raise HTTPException(status_code=403, detail="无写权限")
+    doc = db.query(Document).filter(
+        Document.knowledge_base_id == kb_id,
+        Document.id == doc_id,
+    ).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="文档不存在")
+    if doc.content_type != CONTENT_TYPE_RULE:
+        raise HTTPException(status_code=400, detail="仅笔记/规则类文档可修改")
+    if body.title is not None:
+        doc.filename = body.title.strip()
+    if body.content is not None:
+        doc.content = body.content
+    db.commit()
+    record_activity(
+        db, current_user.id, ActivityAction.UPDATE_NOTE, kb_id,
+        {"filename": doc.filename, "document_id": doc.id},
+    )
+    return {"message": "已更新"}
+
+
+@router.delete("/{kb_id}/documents/{doc_id}")
+def delete_document(
+    kb_id: int,
+    doc_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    """删除文档。规则类无向量；普通文档会同时删除向量库中对应块。"""
+    kb = _get_kb(db, kb_id)
+    if not kb:
+        raise HTTPException(status_code=404, detail="知识库不存在")
+    if not require_kb_write(kb, current_user, db):
+        raise HTTPException(status_code=403, detail="无写权限")
+    doc = db.query(Document).filter(
+        Document.knowledge_base_id == kb_id,
+        Document.id == doc_id,
+    ).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="文档不存在")
+    filename = doc.filename
+    is_rule = doc.content_type == CONTENT_TYPE_RULE
+    if not is_rule:
+        from app.rag.vector_store import delete_vectors_by_filter
+        delete_vectors_by_filter(kb_id, {"document_id": doc_id})
+    db.delete(doc)
+    db.commit()
+    if is_rule:
+        record_activity(
+            db, current_user.id, ActivityAction.DELETE_NOTE, kb_id,
+            {"filename": filename, "document_id": doc_id},
+        )
+    return {"message": "已删除"}
 
 
 @router.get("/{kb_id}/members", response_model=list[MemberResponse])

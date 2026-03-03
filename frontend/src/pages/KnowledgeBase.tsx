@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
 import "@uiw/react-md-editor/markdown-editor.css";
 import { kbApi, KnowledgeBase as KB, Document, Member } from "../api/knowledgeBase";
 import { usersApi } from "../api/users";
@@ -18,6 +19,41 @@ function getFileType(filename: string) {
   const map: Record<string, string> = { TXT: "TXT", PDF: "PDF", DOCX: "DOCX", MD: "MD" };
   return map[ext] || ext || "FILE";
 }
+
+const IconDownload = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <polyline points="7 10 12 15 17 10" />
+    <line x1="12" y1="15" x2="12" y2="3" />
+  </svg>
+);
+const IconTrash = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="3 6 5 6 21 6" />
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    <line x1="10" y1="11" x2="10" y2="17" />
+    <line x1="14" y1="11" x2="14" y2="17" />
+  </svg>
+);
+const IconFolder = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+  </svg>
+);
+const IconUsers = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+  </svg>
+);
+const IconPencil = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+  </svg>
+);
 
 export default function KnowledgeBase() {
   const { id } = useParams<{ id: string }>();
@@ -42,13 +78,91 @@ export default function KnowledgeBase() {
   const [editDescription, setEditDescription] = useState("");
   const [saving, setSaving] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
+  const [noteDocId, setNoteDocId] = useState<number | null>(null);
   const [noteTitle, setNoteTitle] = useState("");
   const [noteContent, setNoteContent] = useState("");
   const [creatingNote, setCreatingNote] = useState(false);
-
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [viewDocId, setViewDocId] = useState<number | null>(null);
+  const [viewTitle, setViewTitle] = useState("");
+  const [viewContent, setViewContent] = useState("");
+  const [viewLoading, setViewLoading] = useState(false);
   const filteredDocuments = searchQuery.trim()
     ? documents.filter((d) => d.filename.toLowerCase().includes(searchQuery.trim().toLowerCase()))
     : documents;
+
+  const handleViewDoc = async (doc: { id: number; filename: string; is_rule?: boolean }) => {
+    if (!doc.is_rule) {
+      alert("仅规则类文档可查看原文");
+      return;
+    }
+    setViewDocId(doc.id);
+    setViewLoading(true);
+    setShowViewModal(true);
+    setViewTitle(doc.filename);
+    setViewContent("");
+    try {
+      const { data } = await kbApi.getDocument(kbId, doc.id);
+      setViewContent(data.content ?? "");
+    } catch {
+      setViewContent("(加载失败)");
+    } finally {
+      setViewLoading(false);
+    }
+  };
+
+  const openEditNote = () => {
+    setNoteDocId(viewDocId);
+    setNoteTitle(viewTitle.replace(/\.md$/i, ""));
+    setNoteContent(viewContent);
+    setShowViewModal(false);
+    setShowNoteModal(true);
+  };
+
+  const handleEditDoc = async (doc: { id: number; filename: string; is_rule?: boolean }) => {
+    if (!doc.is_rule) {
+      alert("仅笔记可编辑");
+      return;
+    }
+    try {
+      const { data } = await kbApi.getDocument(kbId, doc.id);
+      setNoteDocId(doc.id);
+      setNoteTitle(doc.filename.replace(/\.md$/i, ""));
+      setNoteContent(data.content ?? "");
+      setShowNoteModal(true);
+    } catch {
+      alert("加载失败");
+    }
+  };
+
+  const handleDownloadDoc = async (doc: { id: number; filename: string; is_rule?: boolean }) => {
+    if (!doc.is_rule) {
+      alert("仅规则类文档可下载");
+      return;
+    }
+    try {
+      const { data } = await kbApi.getDocument(kbId, doc.id);
+      const blob = new Blob([data.content ?? ""], { type: "text/markdown;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = doc.filename.endsWith(".md") ? doc.filename : `${doc.filename}.md`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert("下载失败");
+    }
+  };
+
+  const handleDeleteDoc = async (doc: { id: number; filename: string }) => {
+    if (!confirm(`确定删除「${doc.filename}」？`)) return;
+    try {
+      await kbApi.deleteDocument(kbId, doc.id);
+      load();
+    } catch (err: unknown) {
+      alert((err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? "删除失败");
+    }
+  };
 
   const load = async () => {
     if (!kbId) return;
@@ -154,8 +268,15 @@ export default function KnowledgeBase() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
-      <Link to="/" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-primary-600 mb-6">
-        ← 返回
+      <Link
+        to="/"
+        className="inline-flex items-center gap-2 px-3 py-2 -ml-1 mb-6 text-sm font-medium text-slate-600 hover:text-primary-600 hover:bg-slate-100 rounded-lg transition-colors"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12" />
+          <polyline points="12 19 5 12 12 5" />
+        </svg>
+        返回
       </Link>
 
       {/* 知识库卡片 */}
@@ -205,10 +326,10 @@ export default function KnowledgeBase() {
                 setEditDescription(kb.description || "");
                 setShowEditModal(true);
               }}
-              className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg"
+              className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
               title="编辑"
             >
-              ✏️
+              <IconPencil />
             </button>
           )}
           {kb.owner_id === currentUser?.id && (
@@ -222,10 +343,10 @@ export default function KnowledgeBase() {
                   alert("删除失败");
                 }
               }}
-              className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
+              className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
               title="删除"
             >
-              🗑️
+              <IconTrash />
             </button>
           )}
         </div>
@@ -236,27 +357,32 @@ export default function KnowledgeBase() {
         <nav className="flex items-center gap-6 -mb-px">
           <button
             onClick={() => setActiveTab("files")}
-            className={`px-1 py-3 text-sm font-medium border-b-2 transition ${
+            className={`px-1 py-3 text-sm font-medium border-b-2 transition flex items-center gap-1.5 ${
               activeTab === "files"
                 ? "text-primary-600 border-primary-600"
                 : "text-slate-600 border-transparent hover:text-slate-800"
             }`}
           >
-            📁 文件 {documents.length > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 rounded text-xs bg-slate-100 text-slate-500 font-normal">
-                {documents.length}
-              </span>
-            )}
+            <span className="inline-flex items-center gap-1.5">
+              <IconFolder />
+              文件
+              {documents.length > 0 && (
+                <span className="ml-0.5 px-1.5 py-0.5 rounded text-xs bg-slate-100 text-slate-500 font-normal">
+                  {documents.length}
+                </span>
+              )}
+            </span>
           </button>
           <button
             onClick={() => setActiveTab("members")}
-            className={`px-1 py-3 text-sm font-medium border-b-2 transition ${
+            className={`px-1 py-3 text-sm font-medium border-b-2 transition flex items-center gap-1.5 ${
               activeTab === "members"
                 ? "text-primary-600 border-primary-600"
                 : "text-slate-600 border-transparent hover:text-slate-800"
             }`}
           >
-            👥 成员 {members.length > 0 && (
+            <IconUsers />
+            成员 {members.length > 0 && (
               <span className="ml-1 px-1.5 py-0.5 rounded text-xs bg-slate-100 text-slate-500 font-normal">
                 {members.length}
               </span>
@@ -279,11 +405,11 @@ export default function KnowledgeBase() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="搜索文档标题..."
-            className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm placeholder:text-slate-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:outline-none"
           />
         </div>
         <div className="flex items-center gap-2">
-          <label className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium cursor-pointer hover:bg-primary-700">
+          <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-lg text-sm font-medium cursor-pointer hover:bg-primary-700 transition-colors shadow-sm">
             <input
               type="file"
               accept=".txt,.md,.pdf,.docx"
@@ -295,16 +421,17 @@ export default function KnowledgeBase() {
           </label>
           <button
             onClick={() => {
+              setNoteDocId(null);
               setNoteTitle("");
               setNoteContent("");
               setUploadError("");
               setShowNoteModal(true);
             }}
-            className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-200"
+            className="px-4 py-2.5 border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 hover:border-slate-300 transition-colors"
           >
             新建笔记
           </button>
-        </div>
+          </div>
       </div>
 
       {/* 文件表格 */}
@@ -315,43 +442,91 @@ export default function KnowledgeBase() {
                 <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 w-10">
                   <input type="checkbox" className="rounded" />
                 </th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">标题</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">标题 / 文件名</th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">类型</th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">大小</th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">解析状态</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-slate-600">操作</th>
+                <th className="text-center py-3 px-4 text-sm font-medium text-slate-600">操作</th>
               </tr>
             </thead>
             <tbody>
               {filteredDocuments.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-500">
-                    {documents.length === 0 ? "暂无文档，请上传文件" : "无匹配的文档"}
+                  <td colSpan={6} className="py-16 text-center">
+                    <div className="text-slate-400 text-sm">
+                      {documents.length === 0 ? (
+                        <>
+                          <span className="block text-4xl mb-2">📄</span>
+                          <span>暂无文档，上传文件或新建笔记开始使用</span>
+                        </>
+                      ) : (
+                        "未找到匹配的文档"
+                      )}
+                    </div>
                   </td>
                 </tr>
               ) : (
                 filteredDocuments.map((doc) => (
-                  <tr key={doc.id} className="border-b border-slate-100 hover:bg-slate-50">
+                  <tr key={doc.id} className="border-b border-slate-100 hover:bg-slate-50/80 transition-colors">
                     <td className="py-3 px-4">
                       <input type="checkbox" className="rounded" />
                     </td>
                     <td className="py-3 px-4">
-                      <span className="font-medium text-slate-800">{doc.filename}</span>
+                      {doc.is_rule ? (
+                        <button
+                          type="button"
+                          onClick={() => handleViewDoc(doc)}
+                          className="font-medium text-slate-800 hover:text-primary-600 hover:underline text-left cursor-pointer"
+                        >
+                          {doc.filename.replace(/\.md$/i, "")}
+                        </button>
+                      ) : (
+                        <span className="font-medium text-slate-800">{doc.filename}</span>
+                      )}
                     </td>
-                    <td className="py-3 px-4 text-slate-600">{getFileType(doc.filename)}</td>
+                    <td className="py-3 px-4">
+                      {doc.is_rule ? (
+                        <span className="inline-flex px-2 py-0.5 rounded text-xs bg-violet-50 text-violet-700">笔记</span>
+                      ) : (
+                        <span className="text-slate-600 text-sm">{getFileType(doc.filename)}</span>
+                      )}
+                    </td>
                     <td className="py-3 px-4 text-slate-600">{formatSize(doc.file_size)}</td>
                     <td className="py-3 px-4">
-                      <span className="inline-flex px-2 py-0.5 rounded text-xs bg-green-100 text-green-700">
-                        {doc.chunk_count > 0 ? "已解析" : "待解析"}
-                      </span>
+                      {doc.is_rule ? (
+                        <span className="inline-flex px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-600">原文传给模型</span>
+                      ) : (
+                        <span className={`inline-flex px-2 py-0.5 rounded text-xs ${doc.chunk_count > 0 ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+                          {doc.chunk_count > 0 ? "已解析" : "待解析"}
+                        </span>
+                      )}
                     </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-1 text-slate-400">
-                        <button className="p-1.5 hover:bg-slate-200 rounded" title="解析">▶</button>
-                        <button className="p-1.5 hover:bg-slate-200 rounded" title="查看">👁</button>
-                        <button className="p-1.5 hover:bg-slate-200 rounded" title="链接">🔗</button>
-                        <button className="p-1.5 hover:bg-slate-200 rounded" title="下载">⬇</button>
-                        <button className="p-1.5 hover:bg-slate-200 rounded text-red-400" title="删除">🗑</button>
+                    <td className="py-3 px-4 text-center">
+                      <div className="flex items-center justify-center gap-1 text-slate-400">
+                        <button
+                          type="button"
+                          onClick={() => handleEditDoc(doc)}
+                          className="p-2 hover:bg-slate-100 hover:text-slate-700 rounded-lg cursor-pointer transition-colors"
+                          title="编辑"
+                        >
+                          <IconPencil />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadDoc(doc)}
+                          className="p-2 hover:bg-slate-100 hover:text-slate-700 rounded-lg cursor-pointer transition-colors"
+                          title="下载"
+                        >
+                          <IconDownload />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteDoc(doc)}
+                          className="p-2 hover:bg-red-50 rounded-lg cursor-pointer transition-colors text-red-500 hover:text-red-600"
+                          title="删除"
+                        >
+                          <IconTrash />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -360,8 +535,8 @@ export default function KnowledgeBase() {
             </tbody>
           </table>
           {filteredDocuments.length > 0 && (
-            <div className="py-2 px-4 border-t border-slate-200 text-sm text-slate-500 flex justify-end">
-              &lt; 第1/1页 &gt;
+            <div className="py-2.5 px-4 border-t border-slate-100 text-sm text-slate-500 flex justify-end items-center gap-1">
+              <span className="text-slate-400">第 1 / 1 页</span>
             </div>
           )}
         </div>
@@ -597,11 +772,12 @@ export default function KnowledgeBase() {
         </div>
       )}
 
-      {/* 新建笔记弹窗 - MD 编辑器 */}
+      {/* 新建/编辑笔记弹窗 - 与新建笔记相同 UI（MD 编辑器） */}
       {showNoteModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-            <h2 className="text-lg font-semibold mb-4">新建笔记</h2>
+            <h2 className="text-lg font-semibold mb-1">{noteDocId != null ? "编辑笔记" : "新建笔记"}</h2>
+            <p className="text-sm text-slate-500 mb-4">将原文传给大模型，不参与向量检索，适合规则、记忆、审查事项等内容。</p>
             <form
               onSubmit={async (e) => {
                 e.preventDefault();
@@ -609,13 +785,18 @@ export default function KnowledgeBase() {
                 setCreatingNote(true);
                 setUploadError("");
                 try {
-                  const filename = noteTitle.endsWith(".md") ? noteTitle : `${noteTitle}.md`;
-                  const file = new File([noteContent || ""], filename, { type: "text/markdown" });
-                  await kbApi.uploadDocument(kbId, file);
+                  if (noteDocId != null) {
+                    const title = noteTitle.trim();
+                    const filename = /\.md$/i.test(title) ? title : `${title}.md`;
+                    await kbApi.updateDocument(kbId, noteDocId, { title: filename, content: noteContent || "" });
+                  } else {
+                    await kbApi.createRule(kbId, { title: noteTitle.trim(), content: noteContent || "" });
+                  }
                   setShowNoteModal(false);
+                  setNoteDocId(null);
                   load();
                 } catch (err: unknown) {
-                  setUploadError((err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || "创建失败");
+                  setUploadError((err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || (noteDocId != null ? "保存失败" : "创建失败"));
                 } finally {
                   setCreatingNote(false);
                 }
@@ -650,7 +831,7 @@ export default function KnowledgeBase() {
               <div className="flex gap-2 justify-end">
                 <button
                   type="button"
-                  onClick={() => setShowNoteModal(false)}
+                  onClick={() => { setShowNoteModal(false); setNoteDocId(null); }}
                   className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
                 >
                   取消
@@ -660,10 +841,35 @@ export default function KnowledgeBase() {
                   disabled={creatingNote}
                   className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
                 >
-                  {creatingNote ? "创建中..." : "创建"}
+                  {creatingNote ? (noteDocId != null ? "保存中..." : "创建中...") : (noteDocId != null ? "保存" : "创建")}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 查看笔记弹窗 - 渲染 Markdown */}
+      {showViewModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowViewModal(false)}>
+          <div className="bg-white rounded-xl p-6 w-full max-w-3xl max-h-[85vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-slate-800 truncate">{viewTitle.replace(/\.md$/i, "")}</h2>
+              <button type="button" onClick={() => setShowViewModal(false)} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 shrink-0">✕</button>
+            </div>
+            <div className="flex-1 overflow-auto border border-slate-200 rounded-lg p-4 bg-slate-50 min-h-[200px] text-slate-700 text-sm [&_h1]:text-xl [&_h1]:font-semibold [&_h2]:text-lg [&_h2]:font-semibold [&_h3]:text-base [&_h3]:font-medium [&_p]:my-2 [&_ul]:my-2 [&_ul]:pl-6 [&_ol]:my-2 [&_ol]:pl-6 [&_pre]:bg-slate-200 [&_pre]:p-3 [&_pre]:rounded [&_pre]:overflow-auto [&_code]:bg-slate-100 [&_code]:px-1 [&_code]:rounded">
+              {viewLoading ? (
+                <p className="text-slate-500 text-sm">加载中...</p>
+              ) : viewContent ? (
+                <ReactMarkdown>{viewContent}</ReactMarkdown>
+              ) : (
+                <p className="text-slate-500 text-sm">(无内容)</p>
+              )}
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button type="button" onClick={openEditNote} className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">编辑</button>
+              <button type="button" onClick={() => setShowViewModal(false)} className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200">关闭</button>
+            </div>
           </div>
         </div>
       )}

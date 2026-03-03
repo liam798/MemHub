@@ -13,10 +13,33 @@ logger = logging.getLogger(__name__)
 from app.core.deps import get_current_user, has_kb_access
 from app.models.user import User
 from app.models.knowledge_base import KnowledgeBase, KnowledgeBaseMember, Visibility
+from app.models.document import Document, CONTENT_TYPE_RULE
 from app.schemas.rag import QueryRequest, QueryResponse, BatchQueryRequest
 from app.rag.pipeline import query_kb, query_kbs
 
 router = APIRouter(tags=["RAG 问答"])
+
+
+def _get_rule_context(db: Session, kb_ids: list[int]) -> str:
+    """拉取所选知识库下所有规则文档的原文，拼接后供 RAG 注入系统提示。"""
+    if not kb_ids:
+        return ""
+    rows = (
+        db.query(Document.filename, Document.content)
+        .filter(
+            Document.knowledge_base_id.in_(kb_ids),
+            Document.content_type == CONTENT_TYPE_RULE,
+            Document.content.isnot(None),
+            Document.content != "",
+        )
+        .order_by(Document.knowledge_base_id, Document.created_at)
+        .all()
+    )
+    parts = []
+    for filename, content in rows:
+        if content and content.strip():
+            parts.append(f"【{filename}】\n{content.strip()}")
+    return "\n\n".join(parts) if parts else ""
 
 
 def _get_kb(db: Session, kb_id: int) -> KnowledgeBase | None:
@@ -64,8 +87,9 @@ def batch_query(
         )
     if not kb_ids:
         raise HTTPException(status_code=400, detail="暂无可用知识库，请先创建或加入知识库")
+    rule_context = _get_rule_context(db, kb_ids)
     try:
-        answer, sources = query_kbs(kb_ids, data.question, data.top_k)
+        answer, sources = query_kbs(kb_ids, data.question, data.top_k, rule_context=rule_context)
     except (TimeoutError, httpx.TimeoutException, httpx.ConnectError) as e:
         logger.warning("RAG OpenAI 请求失败: %s", e)
         raise HTTPException(
@@ -97,8 +121,9 @@ def query(
     if not has_kb_access(kb, current_user, db):
         raise HTTPException(status_code=403, detail="无访问权限")
 
+    rule_context = _get_rule_context(db, [kb_id])
     try:
-        answer, sources = query_kb(kb_id, data.question, data.top_k)
+        answer, sources = query_kb(kb_id, data.question, data.top_k, rule_context=rule_context)
     except (TimeoutError, httpx.TimeoutException, httpx.ConnectError) as e:
         logger.warning("RAG OpenAI 请求失败: %s", e)
         raise HTTPException(

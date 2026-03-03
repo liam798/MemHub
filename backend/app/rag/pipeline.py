@@ -61,12 +61,22 @@ def format_docs(docs: list[Document]) -> str:
     return "\n\n---\n\n".join(d.page_content for d in docs)
 
 
-RAG_PROMPT = ChatPromptTemplate.from_messages([
-    ("system", """你是一个基于知识库的问答助手。请根据以下检索到的上下文回答用户问题。
-如果上下文中没有相关信息，请如实说明。
-回答要准确、简洁。"""),
-    ("human", "上下文：\n{context}\n\n问题：{question}"),
-])
+def _build_rag_messages(rule_context: str | None, context: str, question: str) -> list[tuple[str, str]]:
+    """构建 RAG 消息：若有规则则优先注入原文。"""
+    system_parts = ["你是一个基于知识库的问答助手。"]
+    if rule_context and rule_context.strip():
+        system_parts.append("以下规则请优先遵守：\n" + rule_context.strip())
+    system_parts.append("请根据检索到的上下文回答用户问题。如果上下文中没有相关信息，请如实说明。回答要准确、简洁。")
+    return [
+        ("system", "\n\n".join(system_parts)),
+        ("human", "上下文：\n{context}\n\n问题：{question}"),
+    ]
+
+
+def _rag_prompt_with_rules(rule_context: str | None) -> ChatPromptTemplate:
+    return ChatPromptTemplate.from_messages(
+        _build_rag_messages(rule_context, "{context}", "{question}")
+    )
 
 
 def _safe_top_k(top_k: int) -> int:
@@ -102,7 +112,7 @@ def _fallback_answer_from_docs(docs: list[Document], question: str) -> str:
     )
 
 
-def _generate_answer(context: str, question: str) -> str:
+def _generate_answer(context: str, question: str, rule_context: str | None = None) -> str:
     if not settings.OPENAI_API_KEY:
         raise RuntimeError("OPENAI_API_KEY 未配置")
     from app.rag.vector_store import _openai_httpx_clients
@@ -116,13 +126,19 @@ def _generate_answer(context: str, question: str) -> str:
         max_retries=2,
         http_client=sync_client,
     )
-    chain = RAG_PROMPT | llm | StrOutputParser()
+    prompt = _rag_prompt_with_rules(rule_context)
+    chain = prompt | llm | StrOutputParser()
     return chain.invoke({"context": context, "question": question})
 
 
-def query_kbs(kb_ids: list[int], question: str, top_k: int = 5) -> tuple[str, list[dict]]:
+def query_kbs(
+    kb_ids: list[int],
+    question: str,
+    top_k: int = 5,
+    rule_context: str | None = None,
+) -> tuple[str, list[dict]]:
     """
-    多知识库 RAG 问答，kb_ids 为空时需由调用方传入全部可访问的 kb_id
+    多知识库 RAG 问答。rule_context 为规则原文，将优先注入系统提示。
     """
     top_k = _safe_top_k(top_k)
     all_scored: list[tuple[Document, float]] = []
@@ -131,39 +147,45 @@ def query_kbs(kb_ids: list[int], question: str, top_k: int = 5) -> tuple[str, li
             doc.metadata = doc.metadata or {}
             doc.metadata["_kb_id"] = kb_id
             all_scored.append((doc, score))
-    if not all_scored:
-        return "知识库中暂无相关文档，请先上传文档。", []
-    # 按相似度分数升序排序（距离越小越相似），取前 top_k
-    all_scored.sort(key=lambda x: x[1])
-    docs = [d for d, _ in all_scored[:top_k]]
-    docs = _filter_expired_docs(docs)
-    context = format_docs(docs)
+    if not all_scored and not (rule_context and rule_context.strip()):
+        return "知识库中暂无相关文档，请先上传文档或添加规则。", []
+    docs = []
+    context = ""
+    if all_scored:
+        all_scored.sort(key=lambda x: x[1])
+        docs = [d for d, _ in all_scored[:top_k]]
+        docs = _filter_expired_docs(docs)
+        context = format_docs(docs)
+    if not context.strip() and not (rule_context and rule_context.strip()):
+        return "知识库中暂无相关文档，请先上传文档或添加规则。", []
     try:
-        answer = _generate_answer(context, question)
+        answer = _generate_answer(context or "(无检索片段)", question, rule_context=rule_context)
     except Exception as exc:
         logger.warning("query_kbs llm degraded: %s", exc)
-        answer = _fallback_answer_from_docs(docs, question)
+        answer = _fallback_answer_from_docs(docs, question) if docs else "暂无可用内容，请先上传文档或添加规则。"
     sources = _build_sources(docs)
     return answer, sources
 
 
-def query_kb(kb_id: int, question: str, top_k: int = 5) -> tuple[str, list[dict]]:
+def query_kb(
+    kb_id: int,
+    question: str,
+    top_k: int = 5,
+    rule_context: str | None = None,
+) -> tuple[str, list[dict]]:
     """
-    RAG 问答：检索 + 生成
-    返回 (答案, 来源列表)
+    RAG 问答：检索 + 生成。rule_context 为规则原文，将优先注入系统提示。
     """
     top_k = _safe_top_k(top_k)
     docs = similarity_search(kb_id, question, k=top_k)
     docs = _filter_expired_docs(docs)
-    if not docs:
-        return "知识库中暂无相关文档，请先上传文档。", []
-
-    context = format_docs(docs)
+    context = format_docs(docs) if docs else ""
+    if not context.strip() and not (rule_context and rule_context.strip()):
+        return "知识库中暂无相关文档，请先上传文档或添加规则。", []
     try:
-        answer = _generate_answer(context, question)
+        answer = _generate_answer(context or "(无检索片段)", question, rule_context=rule_context)
     except Exception as exc:
         logger.warning("query_kb llm degraded: %s", exc)
-        answer = _fallback_answer_from_docs(docs, question)
-
+        answer = _fallback_answer_from_docs(docs, question) if docs else "暂无可用内容，请先上传文档或添加规则。"
     sources = _build_sources(docs)
     return answer, sources

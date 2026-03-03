@@ -31,6 +31,11 @@ export interface Document {
   file_size: number;
   chunk_count: number;
   created_at?: string;
+  is_rule?: boolean;
+}
+
+export interface DocumentDetail extends Document {
+  content?: string | null;
 }
 
 export const kbApi = {
@@ -43,6 +48,14 @@ export const kbApi = {
     client.patch<KnowledgeBase>(`/knowledge-bases/${id}`, data),
   delete: (id: number) => client.delete(`/knowledge-bases/${id}`),
   listDocuments: (id: number) => client.get<Document[]>(`/knowledge-bases/${id}/documents`),
+  getDocument: (kbId: number, docId: number) =>
+    client.get<DocumentDetail>(`/knowledge-bases/${kbId}/documents/${docId}`),
+  updateDocument: (kbId: number, docId: number, data: { title?: string; content?: string }) =>
+    client.patch(`/knowledge-bases/${kbId}/documents/${docId}`, data),
+  deleteDocument: (kbId: number, docId: number) =>
+    client.delete(`/knowledge-bases/${kbId}/documents/${docId}`),
+  createRule: (id: number, data: { title: string; content: string }) =>
+    client.post<{ document_id: number }>(`/knowledge-bases/${id}/rules`, data),
   uploadDocument: (id: number, file: File) => {
     const form = new FormData();
     form.append("file", file);

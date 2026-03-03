@@ -1,4 +1,4 @@
-# MemHub - 智能知识库平台
+# MemHub - 面向 AI Agent 的记忆仓库
 
 类似 GitHub 仓库概念的 RAG 知识库系统，支持多用户、多知识库与细粒度权限管理。
 

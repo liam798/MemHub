@@ -199,14 +199,16 @@ export default function Home() {
     if (a.action === "upload_doc") return "上传了文档";
     if (a.action === "add_member") return "添加了成员";
     if (a.action === "create_note") return "新建了笔记";
+    if (a.action === "update_note") return "修改了笔记";
+    if (a.action === "delete_note") return "删除了笔记";
     return a.action_label;
   };
 
   const getActivityBoxContent = (a: Activity) => {
     const kbLabel = a.knowledge_base_owner && a.knowledge_base_name
-      ? `${a.knowledge_base_owner}/${a.knowledge_base_name} 知识库`
+      ? `${a.knowledge_base_owner}/${a.knowledge_base_name}`
       : a.knowledge_base_name
-        ? `${a.knowledge_base_name} 知识库`
+        ? `${a.knowledge_base_name}`
         : "";
     if (a.action === "create_kb") {
       const name = (a.extra?.name as string) || a.knowledge_base_name || "";
@@ -216,6 +218,8 @@ export default function Home() {
     if (a.action === "upload_doc") return { primary: kbLabel, secondary: (a.extra?.filename as string) || "" };
     if (a.action === "add_member") return { primary: kbLabel, secondary: `${(a.extra?.member_username as string) || ""} (${(a.extra?.role as string) || "read"})` };
     if (a.action === "create_note") return { primary: kbLabel, secondary: (a.extra?.filename as string) || "" };
+    if (a.action === "update_note") return { primary: kbLabel, secondary: (a.extra?.filename as string) || "" };
+    if (a.action === "delete_note") return { primary: kbLabel, secondary: (a.extra?.filename as string) || "" };
     return { primary: "", secondary: null };
   };
 
