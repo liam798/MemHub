@@ -14,17 +14,18 @@
 ## 技术栈
 
 - **后端**：FastAPI + SQLAlchemy + PostgreSQL + pgvector
-- **RAG**：LangChain + OpenAI Embeddings
 - **前端**：React + TypeScript + Tailwind CSS
+- **RAG**：LangChain + OpenAI Embeddings
 
-## 一键启动
+## 一键安装
 
-已安装 Docker 与 Docker Compose 时，可执行：
+已安装 Docker 时，执行以下命令将自动安装环境并启动 MemHub：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/liam798/MemHub/main/scripts/install.sh | bash
 ```
-## 编译启动
+
+## 源码开发
 
 ### 环境要求
 
@@ -62,6 +63,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 
 ```
 MemHub/
+├── skill.md          # Agent Skill 说明（前端通过 Vite 提供 /skill.md）
 ├── backend/          # FastAPI 后端
 │   ├── app/
 │   │   ├── api/      # API 路由
@@ -71,8 +73,8 @@ MemHub/
 │   │   ├── services/ # 业务逻辑
 │   │   └── rag/      # RAG 管道
 │   └── alembic/      # 数据库迁移
-├── frontend/         # React 前端（含 public/skill.md 在线 Skill）
-├── skills/memhub/   # Skill 仓库副本（离线参考）
+├── frontend/         # React 前端
+├── scripts/          # 一键安装与启动脚本
 └── README.md
 ```
 
@@ -92,14 +94,14 @@ MemHub/
 | POST | /api/knowledge-bases/{id}/memory/query | 查询公共记忆（需读权限） |
 | POST | /api/knowledge-bases/{id}/memory/cleanup | 清理过期公共记忆（需写权限） |
 | GET | /api/knowledge-bases/{id}/members | 成员列表 |
+| POST | /api/knowledge-bases/{id}/members | 添加成员 |
+| GET | /health/live | 存活探针 |
+| GET | /health/ready | 就绪探针（含数据库探活） |
 
 **公共记忆说明**
 - `memory` 支持携带 `metadata`（如 `agent_id`/`thread_id`），并会写入向量元数据。
 - `memory/query` 支持 `metadata_filter` 精确过滤（与 `metadata` 同键名）。
 - `metadata` 不允许使用保留字段：`knowledge_base_id`, `type`, `memory_id`, `expires_at`。
-| POST | /api/knowledge-bases/{id}/members | 添加成员 |
-| GET | /health/live | 存活探针 |
-| GET | /health/ready | 就绪探针（含数据库探活） |
 
 **API Key**：调用公开接口时使用（用户菜单 → API Key）。Agent 接入时在 API Key 弹窗中点击「复制 Agent 提示词」即可一键让 Agent 接入 MemHub。
 
