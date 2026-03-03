@@ -71,8 +71,9 @@ def list_my_knowledge_bases(
         Literal["joined", "public"],
         Query(description="joined=我参与的(拥有+成员), public=公开知识库"),
     ] = "joined",
+    name: Annotated[str | None, Query(description="按名称模糊匹配，用于 Agent 根据项目名关联知识库")] = None,
 ):
-    """知识库列表。scope=joined 返回我拥有或参与的知识库，scope=public 返回全部公开知识库。"""
+    """知识库列表。scope=joined 返回我拥有或参与的知识库，scope=public 返回全部公开知识库。name 不为空时仅返回名称包含该字符串的知识库（不区分大小写）。"""
     if scope == "public":
         all_kbs = (
             db.query(KnowledgeBase)
@@ -93,6 +94,10 @@ def list_my_knowledge_bases(
             key=lambda kb: (kb.updated_at or kb.created_at or datetime.min),
             reverse=True,
         )
+
+    if name and name.strip():
+        needle = name.strip().lower()
+        all_kbs = [kb for kb in all_kbs if needle in (kb.name or "").lower()]
 
     if not all_kbs:
         return []

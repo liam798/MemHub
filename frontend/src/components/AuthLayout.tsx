@@ -42,7 +42,7 @@ export default function AuthLayout({
             <ul className="text-slate-400 text-sm space-y-2 mt-10">
               <li className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-primary-400 shrink-0" />
-                记忆检索与问答
+                RAG 检索与问答
               </li>
               <li className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-primary-400 shrink-0" />

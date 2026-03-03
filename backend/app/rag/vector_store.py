@@ -17,7 +17,9 @@ def get_collection_name(kb_id: int) -> str:
 
 def _openai_httpx_clients():
     """创建用于 OpenAI 的 httpx 客户端。优先用环境代理；若为 SOCKS 且未装 socksio 则仅用 HTTP(S) 代理。"""
-    timeout = httpx.Timeout(float(getattr(settings, "OPENAI_REQUEST_TIMEOUT", 60)))
+    read_sec = float(getattr(settings, "OPENAI_REQUEST_TIMEOUT", 60))
+    # 连接 15s 超时避免代理无响应；httpx 要求设齐四类或给 default
+    timeout = httpx.Timeout(connect=15.0, read=read_sec, write=read_sec, pool=30.0)
     try:
         sync_client = httpx.Client(trust_env=True, timeout=timeout)
         async_client = httpx.AsyncClient(trust_env=True, timeout=timeout)
