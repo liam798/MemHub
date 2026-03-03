@@ -397,7 +397,6 @@ export default function Home() {
                             <>
                               {kbSelectJoinedFiltered.length > 0 && (
                                 <div className="py-1">
-                                  <div className="px-3 py-1.5 text-xs font-medium text-slate-500">我参与的</div>
                                   {kbSelectJoinedFiltered.map((kb) => {
                                     const checked = selectedKbIds.includes(kb.id);
                                     return (
