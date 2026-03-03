@@ -140,7 +140,7 @@ def query_kbs(
     """
     context = (rule_context or "").strip()
     if not context:
-        return "知识库中暂无文档内容，请先上传 MD 文件或新建笔记。", []
+        return "知识库中暂无文档内容，请先上传或新建文档。", []
     try:
         answer = _generate_answer(context, question, rule_context=rule_context)
     except Exception as exc:
@@ -160,7 +160,7 @@ def query_kb(
     """
     context = (rule_context or "").strip()
     if not context:
-        return "知识库中暂无文档内容，请先上传 MD 文件或新建笔记。", []
+        return "知识库中暂无文档内容，请先上传或新建文档。", []
     try:
         answer = _generate_answer(context, question, rule_context=rule_context)
     except Exception as exc:

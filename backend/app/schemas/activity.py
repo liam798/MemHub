@@ -5,7 +5,7 @@ ACTION_LABELS = {
     "create_kb": "创建了知识库",
     "upload_doc": "上传了文档",
     "add_member": "添加了成员",
-    "create_note": "新建了笔记",
+    "create_note": "新建了文档",
 }
 
 

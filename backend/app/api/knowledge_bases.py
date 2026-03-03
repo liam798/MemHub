@@ -397,8 +397,6 @@ def update_document(
     ).first()
     if not doc:
         raise HTTPException(status_code=404, detail="文档不存在")
-    if doc.content_type != CONTENT_TYPE_RULE:
-        raise HTTPException(status_code=400, detail="仅笔记/规则类文档可修改")
     if body.title is not None:
         doc.filename = body.title.strip()
     if body.content is not None:
