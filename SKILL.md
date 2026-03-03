@@ -14,22 +14,19 @@ MemHub —— 面向 AI Agent 接入的记忆仓库。
 |------|------|
 | **SKILL.md**（本文件） | 当前站点 `/skill.md`（完整地址即你访问 MemHub 前端的域名 + `/skill.md`） |
 
-通过开发服务器或配置了 `VITE_MEMHUB_ORIGIN` 构建时，文中的地址占位符会自动替换为实际 IP/域名。
-
 **本地安装（Agent 请下载到本地使用）：**
 
 ```bash
-# 将 MEMHUB_ORIGIN 替换为实际 MemHub 前端地址
-MEMHUB_ORIGIN="__MEMHUB_ORIGIN__"
 # 将 SKILL_DIR 替换为你当前使用的 Agent 技能目录，例如：
 #   Cursor:     ~/.cursor/skills/memhub
+#   Codex:      ~/.codex/skills/memhub
 #   OpenClaw:   ~/.openclaw/skills/memhub
 #   其他平台:   按该平台文档配置的技能目录
 SKILL_DIR="${SKILL_DIR:-$HOME/.cursor/skills/memhub}"
 
 mkdir -p "$SKILL_DIR"
-curl -s "$MEMHUB_ORIGIN/skill.md" > "$SKILL_DIR/SKILL.md"
-# 若访问异常，可尝试：curl --noproxy '*' -fsSL "$MEMHUB_ORIGIN/skill.md" > "$SKILL_DIR/SKILL.md"
+curl -s "__MEMHUB_ORIGIN__/skill.md" > "$SKILL_DIR/SKILL.md"
+# 若访问异常，可尝试：curl --noproxy '*' -fsSL "__MEMHUB_ORIGIN__/skill.md" > "$SKILL_DIR/SKILL.md"
 ```
 
 **也可直接通过上表地址在线阅读。**

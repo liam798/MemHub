@@ -1,54 +1,27 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import { readFileSync, writeFileSync } from "fs";
-import { resolve } from "path";
-
-const MEMHUB_ORIGIN_PLACEHOLDER = "__MEMHUB_ORIGIN__";
-const SKILL_MD_PATH = resolve(process.cwd(), "..", "SKILL.md");
 
 export default defineConfig({
-  plugins: [
-    react(),
-    {
-      name: "skill-md-utf8",
-      configureServer(server) {
-        const skillHandler = (req: any, res: any, next: () => void) => {
-          if (req.url === "/skill.md" || req.url?.startsWith("/skill.md?")) {
-            const file = SKILL_MD_PATH;
-            let body = readFileSync(file, "utf-8");
-            const host = req.headers.host || "localhost:3000";
-            const protocol =
-              (req.headers["x-forwarded-proto"] as string) === "https"
-                ? "https"
-                : "http";
-            const origin = `${protocol}://${host}`;
-            body = body.replace(new RegExp(MEMHUB_ORIGIN_PLACEHOLDER, "g"), origin);
-            res.setHeader("Content-Type", "text/markdown; charset=utf-8");
-            res.setHeader("Cache-Control", "public, max-age=0");
-            res.end(body);
-            return;
-          }
-          next();
-        };
-        server.middlewares.stack.unshift({ route: "", handle: skillHandler });
-      },
-      writeBundle() {
-        const out = resolve(process.cwd(), "dist/skill.md");
-        const file = SKILL_MD_PATH;
-        let body = readFileSync(file, "utf-8");
-        const origin =
-          process.env.VITE_MEMHUB_ORIGIN || MEMHUB_ORIGIN_PLACEHOLDER;
-        body = body.replace(new RegExp(MEMHUB_ORIGIN_PLACEHOLDER, "g"), origin);
-        writeFileSync(out, body, "utf-8");
-      },
-    },
-  ],
+  plugins: [react()],
   server: {
     port: 3000,
+    host: true, // 监听 0.0.0.0，支持 127.0.0.1、localhost 及本机 IP 访问
     proxy: {
       "/api": {
         target: "http://localhost:8000",
         changeOrigin: true,
+      },
+      "/skill.md": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+        configure(proxy) {
+          proxy.on("proxyReq", (proxyReq, req) => {
+            const host = req.headers.host || "localhost:3000";
+            proxyReq.setHeader("X-Forwarded-Host", host);
+            const proto = req.headers["x-forwarded-proto"] ?? (req.socket?.encrypted ? "https" : "http");
+            proxyReq.setHeader("X-Forwarded-Proto", proto);
+          });
+        },
       },
     },
   },
