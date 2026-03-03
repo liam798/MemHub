@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     # 应用
     REQUEST_TIMEOUT_SECONDS: int = 180
     MAX_UPLOAD_FILE_SIZE_MB: int = 25
+    ALLOW_DESTRUCTIVE_MIGRATIONS: bool = False
 
     @cached_property
     def cors_origins(self) -> list[str]:
