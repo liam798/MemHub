@@ -27,7 +27,7 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4">
       <div className="w-full max-w-sm bg-white rounded-2xl shadow-lg p-8">
-        <h1 className="text-2xl font-bold text-center text-slate-800 mb-6">OpenRAG</h1>
+        <h1 className="text-2xl font-bold text-center text-slate-800 mb-6">MemHub</h1>
         <p className="text-center text-slate-500 text-sm mb-8">智能知识库 · 登录</p>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

@@ -1,4 +1,4 @@
-# OpenRAG - 智能知识库平台
+# MemHub - 智能知识库平台
 
 类似 GitHub 仓库概念的 RAG 知识库系统，支持多用户、多知识库与细粒度权限管理。
 
@@ -9,7 +9,7 @@
 - **权限管理**：Owner / Admin / Write / Read 四级权限
 - **文档管理**：上传文档，自动分块与向量化
 - **智能检索**：基于 RAG 的问答，支持语义搜索
-- **Agent 一键接入**：复制 Agent 提示词，即可让你的 Agent 自动接入 OpenRAG 知识库检索
+- **Agent 一键接入**：复制 Agent 提示词，即可让你的 Agent 自动接入 MemHub 知识库检索
 
 ## 技术栈
 
@@ -22,7 +22,7 @@
 已安装 Docker 与 Docker Compose 时，可执行：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/liam798/OpenRAG/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/liam798/MemHub/main/scripts/install.sh | bash
 ```
 ## 编译启动
 
@@ -61,7 +61,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 ## 项目结构
 
 ```
-OpenRAG/
+MemHub/
 ├── backend/          # FastAPI 后端
 │   ├── app/
 │   │   ├── api/      # API 路由
@@ -72,7 +72,7 @@ OpenRAG/
 │   │   └── rag/      # RAG 管道
 │   └── alembic/      # 数据库迁移
 ├── frontend/         # React 前端（含 public/skill.md 在线 Skill）
-├── skills/openrag/   # Skill 仓库副本（离线参考）
+├── skills/memhub/   # Skill 仓库副本（离线参考）
 └── README.md
 ```
 
@@ -101,7 +101,7 @@ OpenRAG/
 | GET | /health/live | 存活探针 |
 | GET | /health/ready | 就绪探针（含数据库探活） |
 
-**API Key**：调用公开接口时使用（用户菜单 → API Key）。Agent 接入时在 API Key 弹窗中点击「复制 Agent 提示词」即可一键让 Agent 接入 OpenRAG。
+**API Key**：调用公开接口时使用（用户菜单 → API Key）。Agent 接入时在 API Key 弹窗中点击「复制 Agent 提示词」即可一键让 Agent 接入 MemHub。
 
 ## 可靠性与运维建议
 

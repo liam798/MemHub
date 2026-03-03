@@ -1,4 +1,4 @@
-"""OpenRAG 主应用"""
+"""MemHub 主应用"""
 import asyncio
 import logging
 import time
@@ -81,7 +81,7 @@ async def request_context_middleware(request: Request, call_next):
 
 @app.get("/")
 def root():
-    return {"message": "OpenRAG API", "docs": "/docs"}
+    return {"message": "MemHub API", "docs": "/docs"}
 
 
 @app.get("/health/live")

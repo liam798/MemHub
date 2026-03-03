@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -e
 
-OPENRAG_REPO="${OPENRAG_REPO:-https://github.com/liam798/OpenRAG.git}"
-OPENRAG_HOME="${OPENRAG_HOME:-$(pwd)/OpenRAG}"
+MEMHUB_REPO="${MEMHUB_REPO:-https://github.com/liam798/MemHub.git}"
+MEMHUB_HOME="${MEMHUB_HOME:-$(pwd)/MemHub}"
 
-echo "==> OpenRAG 一键部署"
-echo "    安装目录: $OPENRAG_HOME"
+echo "==> MemHub 一键部署"
+echo "    安装目录: $MEMHUB_HOME"
 echo ""
 
 if ! command -v docker &>/dev/null; then
@@ -17,14 +17,14 @@ if ! docker compose version &>/dev/null; then
   exit 1
 fi
 
-if [[ -d "$OPENRAG_HOME" && -f "$OPENRAG_HOME/docker-compose.yml" ]]; then
-  echo "==> 使用已有目录: $OPENRAG_HOME"
-  cd "$OPENRAG_HOME"
+if [[ -d "$MEMHUB_HOME" && -f "$MEMHUB_HOME/docker-compose.yml" ]]; then
+  echo "==> 使用已有目录: $MEMHUB_HOME"
+  cd "$MEMHUB_HOME"
   git pull --rebase 2>/dev/null || true
 else
   echo "==> 克隆仓库..."
-  git clone --depth 1 "$OPENRAG_REPO" "$OPENRAG_HOME"
-  cd "$OPENRAG_HOME"
+  git clone --depth 1 "$MEMHUB_REPO" "$MEMHUB_HOME"
+  cd "$MEMHUB_HOME"
 fi
 
 echo "==> 启动 PostgreSQL (Docker)..."
@@ -53,9 +53,9 @@ echo "==> 安装前端依赖..."
 (cd frontend && npm install)
 
 echo "==> 启动后端与前端服务..."
-(cd "$OPENRAG_HOME/backend" && uvicorn app.main:app --reload --host 0.0.0.0) &
+(cd "$MEMHUB_HOME/backend" && uvicorn app.main:app --reload --host 0.0.0.0) &
 BACKEND_PID=$!
-(cd "$OPENRAG_HOME/frontend" && npm run dev) &
+(cd "$MEMHUB_HOME/frontend" && npm run dev) &
 FRONTEND_PID=$!
 
 sleep 2

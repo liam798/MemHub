@@ -6,13 +6,13 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     """应用配置"""
 
-    APP_NAME: str = "OpenRAG"
+    APP_NAME: str = "MemHub"
     DEBUG: bool = False
     API_V1_PREFIX: str = "/api"
     ALLOWED_ORIGINS: str = "*"
 
     # 数据库
-    DATABASE_URL: str = "postgresql://postgres:password@localhost:5432/openrag"
+    DATABASE_URL: str = "postgresql://postgres:password@localhost:5432/memhub"
     DB_POOL_SIZE: int = 10
     DB_MAX_OVERFLOW: int = 20
     DB_POOL_TIMEOUT_SECONDS: int = 30

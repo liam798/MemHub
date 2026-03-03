@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react";
 import { readFileSync, writeFileSync } from "fs";
 import { resolve } from "path";
 
-const OPENRAG_ORIGIN_PLACEHOLDER = "__OPENRAG_ORIGIN__";
+const MEMHUB_ORIGIN_PLACEHOLDER = "__MEMHUB_ORIGIN__";
 
 export default defineConfig({
   plugins: [
@@ -21,7 +21,7 @@ export default defineConfig({
                 ? "https"
                 : "http";
             const origin = `${protocol}://${host}`;
-            body = body.replace(new RegExp(OPENRAG_ORIGIN_PLACEHOLDER, "g"), origin);
+            body = body.replace(new RegExp(MEMHUB_ORIGIN_PLACEHOLDER, "g"), origin);
             res.setHeader("Content-Type", "text/markdown; charset=utf-8");
             res.setHeader("Cache-Control", "public, max-age=0");
             res.end(body);
@@ -36,8 +36,8 @@ export default defineConfig({
         const file = resolve(process.cwd(), "public/skill.md");
         let body = readFileSync(file, "utf-8");
         const origin =
-          process.env.VITE_OPENRAG_ORIGIN || OPENRAG_ORIGIN_PLACEHOLDER;
-        body = body.replace(new RegExp(OPENRAG_ORIGIN_PLACEHOLDER, "g"), origin);
+          process.env.VITE_MEMHUB_ORIGIN || MEMHUB_ORIGIN_PLACEHOLDER;
+        body = body.replace(new RegExp(MEMHUB_ORIGIN_PLACEHOLDER, "g"), origin);
         writeFileSync(out, body, "utf-8");
       },
     },

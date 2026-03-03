@@ -59,7 +59,7 @@ export default function Layout() {
     typeof window !== "undefined" ? window.location.origin : "";
   const agentPrompt =
     apiKey && baseUrl
-      ? `Read ${baseUrl}/skill.md and follow the instructions to join OpenRAG. Use this API Key: ${apiKey}\n\nIf access fails, try without proxy (e.g. curl --noproxy '*' -fsSL ${baseUrl}/skill.md).`
+      ? `Read ${baseUrl}/skill.md and follow the instructions to join MemHub. Use this API Key: ${apiKey}\n\nIf access fails, try without proxy (e.g. curl --noproxy '*' -fsSL ${baseUrl}/skill.md).`
       : "";
 
   const copyAgentPrompt = () => {
@@ -76,7 +76,7 @@ export default function Layout() {
       <header className="h-14 border-b border-slate-200 flex items-center px-6 shrink-0" style={{ backgroundColor: "#f7f8fa" }}>
         {/* 左侧 Logo */}
         <Link to="/" className="flex items-center gap-2 shrink-0">
-          <span className="font-bold text-xl text-primary-600">OpenRAG</span>
+          <span className="font-bold text-xl text-primary-600">MemHub</span>
         </Link>
 
         {/* 右侧：用户 */}
