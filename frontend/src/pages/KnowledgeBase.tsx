@@ -161,9 +161,9 @@ export default function KnowledgeBase() {
       {/* 知识库卡片 */}
       <div className="bg-white rounded-xl border border-slate-200 p-5 mb-6 flex items-center justify-between">
         <div className="flex items-center gap-4 min-w-0 flex-1">
-          <div className="w-12 h-12 rounded-lg bg-primary-100 flex items-center justify-center text-2xl shrink-0">
-            📚
-          </div>
+          <span className="w-8 h-8 min-w-8 min-h-8 rounded-full bg-slate-300 flex items-center justify-center text-sm font-medium text-slate-600 shrink-0">
+            {(kb.owner_username || kb.name).charAt(0).toUpperCase()}
+          </span>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-xl font-semibold text-slate-800">
@@ -445,9 +445,9 @@ export default function KnowledgeBase() {
                   {adminMembers.map((m) => (
                     <div key={m.user_id} className="flex items-center justify-between py-2">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 text-sm font-medium">
-                          {m.username.charAt(0)}
-                        </div>
+                        <span className="w-8 h-8 min-w-8 min-h-8 rounded-full bg-slate-300 flex items-center justify-center text-sm font-medium text-slate-600 shrink-0">
+                          {m.username.charAt(0).toUpperCase()}
+                        </span>
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-slate-800">{m.username}</span>
@@ -497,9 +497,9 @@ export default function KnowledgeBase() {
                   {developerMembers.map((m) => (
                     <div key={m.user_id} className="flex items-center justify-between py-2">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 text-sm font-medium">
-                          {m.username.charAt(0)}
-                        </div>
+                        <span className="w-8 h-8 min-w-8 min-h-8 rounded-full bg-slate-300 flex items-center justify-center text-sm font-medium text-slate-600 shrink-0">
+                          {m.username.charAt(0).toUpperCase()}
+                        </span>
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-slate-800">{m.username}</span>
@@ -546,9 +546,9 @@ export default function KnowledgeBase() {
                   {readOnlyMembers.map((m) => (
                     <div key={m.user_id} className="flex items-center justify-between py-2">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 text-sm font-medium">
-                          {m.username.charAt(0)}
-                        </div>
+                        <span className="w-8 h-8 min-w-8 min-h-8 rounded-full bg-slate-300 flex items-center justify-center text-sm font-medium text-slate-600 shrink-0">
+                          {m.username.charAt(0).toUpperCase()}
+                        </span>
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-slate-800">{m.username}</span>

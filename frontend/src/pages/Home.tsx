@@ -201,14 +201,20 @@ export default function Home() {
     <div className="flex h-[calc(100vh-3.5rem)]">
       {/* 左侧：知识库列表 */}
       <aside className="w-72 shrink-0 border-r border-slate-200 bg-white flex flex-col overflow-hidden">
-        <div className="p-4">
-          <div className="flex items-center justify-between mb-3">
+        <div className="px-4 pt-6 pb-2">
+          <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold text-slate-800">知识库</h2>
             <button
               onClick={() => setShowModal(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700"
             >
-              <span>📁</span> 新建
+              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+                <path d="M12 6v12" />
+                <path d="M10 18l2-3 2 3" />
+              </svg>
+              新建
             </button>
           </div>
           <input
@@ -227,15 +233,15 @@ export default function Home() {
               {list.length === 0 ? "暂无知识库" : "无匹配结果"}
             </div>
           ) : (
-            <ul className="py-2">
+            <ul className="pt-1 pb-2">
               {filteredList.map((kb) => (
                 <li key={kb.id}>
                   <Link
                     to={`/kb/${kb.id}`}
                     className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50"
                   >
-                    <span className="w-6 h-6 min-w-6 min-h-6 rounded bg-primary-100 flex items-center justify-center shrink-0 text-base leading-none">
-                      📚
+                    <span className="w-8 h-8 min-w-8 min-h-8 rounded-full bg-slate-300 flex items-center justify-center shrink-0 text-sm font-medium text-slate-600">
+                      {(kb.owner_username || kb.name).charAt(0).toUpperCase()}
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="truncate font-medium">
@@ -256,14 +262,13 @@ export default function Home() {
       {/* 右侧：AI 会话 + Feed */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <div className="flex-1 overflow-auto p-6">
-        <h1 className="text-xl font-semibold text-slate-800 mb-6">首页</h1>
 
           {/* AI 会话区 */}
           <div className="mb-8">
             <form
               onSubmit={handleAsk}
-              className={`bg-white border rounded-xl overflow-hidden flex flex-col transition-shadow ${
-                inputFocused ? "ring-2 ring-primary-500 border-primary-500" : "border-slate-200"
+              className={`bg-white border rounded-xl overflow-hidden flex flex-col transition-all ${
+                inputFocused ? "ring-1 ring-primary-500 border-primary-500" : "border-slate-300"
               }`}
             >
               <textarea
@@ -279,7 +284,7 @@ export default function Home() {
                 onFocus={() => setInputFocused(true)}
                 onBlur={() => setInputFocused(false)}
                 placeholder="Ask anything..."
-                className="w-full px-4 py-3 text-sm resize-none focus:outline-none focus:ring-0 border-0"
+                className="w-full px-4 py-3 text-sm resize-none focus:outline-none focus:ring-0 border-0 placeholder:text-slate-500"
                 rows={4}
                 disabled={aiLoading}
               />
@@ -291,18 +296,23 @@ export default function Home() {
                     onClick={() => setKbSelectOpen((o) => !o)}
                     className="inline-flex items-center gap-2 pl-3 pr-2 py-1.5 border border-slate-200 rounded-lg text-sm bg-white text-slate-600 hover:border-slate-300 min-w-[140px]"
                   >
-                    <span className="w-4 h-4 shrink-0 text-slate-500">📚</span>
+                    <span className="w-4 h-4 shrink-0 text-slate-500 flex items-center justify-center">
+                      <svg className="w-full h-full" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+                        <path d="M12 6v12" />
+                        <path d="M10 18l2-3 2 3" />
+                      </svg>
+                    </span>
                     <span className="flex-1 min-w-0 truncate text-left">
                       {selectedKbIds.length === 0
                         ? "全部知识库"
-                        : selectedKbIds.length === list.length
-                          ? "全部知识库"
-                          : selectedKbIds.length === 1
-                            ? (() => {
-                                const k = list.find((kb) => kb.id === selectedKbIds[0]);
-                                return k ? (k.owner_username ? `${k.owner_username}/${k.name}` : k.name) : "已选 1 个";
-                              })()
-                            : `已选 ${selectedKbIds.length} 个`}
+                        : selectedKbIds.length === 1
+                          ? (() => {
+                              const k = list.find((kb) => kb.id === selectedKbIds[0]);
+                              return k ? (k.owner_username ? `${k.owner_username}/${k.name}` : k.name) : "已选 1 个";
+                            })()
+                          : `已选 ${selectedKbIds.length} 个`}
                     </span>
                     <svg className="w-4 h-4 shrink-0 ml-auto text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -349,7 +359,14 @@ export default function Home() {
                                     onChange={() => toggleKb(kb.id)}
                                     className="rounded border-slate-300 text-primary-600 focus:ring-primary-500"
                                   />
-                                  <span className="w-6 h-6 min-w-6 rounded bg-primary-100 flex items-center justify-center shrink-0 text-sm">📚</span>
+                                  <span className="w-5 h-5 min-w-5 flex items-center justify-center shrink-0 text-slate-500">
+                                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                                      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+                                      <path d="M12 6v12" />
+                                      <path d="M10 18l2-3 2 3" />
+                                    </svg>
+                                  </span>
                                   <span className="text-sm text-slate-700 truncate">
                                     {kb.owner_username ? `${kb.owner_username}/${kb.name}` : kb.name}
                                   </span>
@@ -365,10 +382,10 @@ export default function Home() {
                 <button
                   type="submit"
                   disabled={aiLoading || !aiQuestion.trim()}
-                  className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg disabled:opacity-50"
+                  className="p-2.5 text-primary-600 hover:bg-primary-50 rounded-lg disabled:opacity-50"
                   title="Enter 发送、Shift+Enter 换行"
                 >
-                  <svg className="w-5 h-5 rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-6 h-6 rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                   </svg>
                 </button>

@@ -9,7 +9,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = "006_add_memory_items"
-down_revision = "005_add_indexes_and_constraints"
+down_revision = "005"
 branch_labels = None
 depends_on = None
 

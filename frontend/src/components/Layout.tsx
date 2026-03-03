@@ -76,7 +76,8 @@ export default function Layout() {
       <header className="h-14 border-b border-slate-200 flex items-center px-6 shrink-0" style={{ backgroundColor: "#f7f8fa" }}>
         {/* 左侧 Logo */}
         <Link to="/" className="flex items-center gap-2 shrink-0">
-          <span className="font-bold text-xl text-primary-600">MemHub</span>
+          <img src="/favicon.svg" alt="MemHub" className="w-8 h-8 rounded-lg shrink-0" />
+          <span className="font-bold text-xl text-slate-900">MemHub</span>
         </Link>
 
         {/* 右侧：用户 */}
@@ -86,11 +87,13 @@ export default function Layout() {
               onClick={() => setUserMenuOpen(!userMenuOpen)}
               className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-100"
             >
-              <span className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 text-sm font-medium">
-                {user?.username?.charAt(0) || "U"}
+              <span className="w-8 h-8 min-w-8 min-h-8 rounded-full bg-slate-300 flex items-center justify-center text-sm font-medium text-slate-600 shrink-0">
+                {(user?.username || "U").charAt(0).toUpperCase()}
               </span>
               <span className="text-sm font-medium text-slate-700">{user?.username}</span>
-              <span className="text-slate-400">▼</span>
+              <svg className="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
             </button>
             {userMenuOpen && (
               <>

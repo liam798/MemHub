@@ -31,12 +31,16 @@ def register(data: UserCreate, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 def login(data: UserLogin, db: Session = Depends(get_db)):
-    """用户登录（JSON）"""
-    user = db.query(User).filter(User.username == data.username).first()
+    """用户登录（JSON），支持用户名或邮箱"""
+    user = (
+        db.query(User)
+        .filter((User.username == data.username) | (User.email == data.username))
+        .first()
+    )
     if not user or not verify_password(data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="用户名或密码错误",
+            detail="用户名/邮箱或密码错误",
         )
     token = create_token_for_user(user)
     return Token(access_token=token)
@@ -44,12 +48,16 @@ def login(data: UserLogin, db: Session = Depends(get_db)):
 
 @router.post("/token", response_model=Token)
 def token(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    """OAuth2 兼容的 token 端点（用于 Swagger 授权）"""
-    user = db.query(User).filter(User.username == form.username).first()
+    """OAuth2 兼容的 token 端点（用于 Swagger 授权），支持用户名或邮箱"""
+    user = (
+        db.query(User)
+        .filter((User.username == form.username) | (User.email == form.username))
+        .first()
+    )
     if not user or not verify_password(form.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="用户名或密码错误",
+            detail="用户名/邮箱或密码错误",
         )
     token_str = create_token_for_user(user)
     return Token(access_token=token_str)
