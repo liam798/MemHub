@@ -55,8 +55,8 @@ export const kbApi = {
     client.patch(`/knowledge-bases/${kbId}/documents/${docId}`, data),
   deleteDocument: (kbId: number, docId: number) =>
     client.delete(`/knowledge-bases/${kbId}/documents/${docId}`),
-  createRule: (id: number, data: { title: string; content: string }) =>
-    client.post<{ document_id: number }>(`/knowledge-bases/${id}/rules`, data),
+  createDocument: (id: number, data: { title: string; content: string }) =>
+    client.post<{ document_id: number }>(`/knowledge-bases/${id}/documents/create`, data),
   uploadDocument: (id: number, file: File) => {
     const form = new FormData();
     form.append("file", file);
