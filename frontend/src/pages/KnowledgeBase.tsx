@@ -778,7 +778,7 @@ export default function KnowledgeBase() {
                     const filename = /\.md$/i.test(title) ? title : `${title}.md`;
                     await kbApi.updateDocument(kbId, noteDocId, { title: filename, content: noteContent || "" });
                   } else {
-                    await kbApi.createRule(kbId, { title: noteTitle.trim(), content: noteContent || "" });
+                    await kbApi.createDocument(kbId, { title: noteTitle.trim(), content: noteContent || "" });
                   }
                   setShowNoteModal(false);
                   setNoteDocId(null);

@@ -2,16 +2,16 @@
 from pydantic import BaseModel, Field
 
 
-class CreateRuleRequest(BaseModel):
-    """新建规则（原文传给大模型，不向量化）"""
-    title: str = Field(min_length=1, max_length=256, description="规则标题")
-    content: str = Field(default="", description="规则正文，支持 Markdown")
+class CreateDocumentRequest(BaseModel):
+    """新建文档（原文传给大模型，不向量化）"""
+    title: str = Field(min_length=1, max_length=256, description="文档标题")
+    content: str = Field(default="", description="文档正文，支持 Markdown")
 
 
-class UpdateRuleRequest(BaseModel):
-    """更新规则"""
-    title: str | None = Field(None, min_length=1, max_length=256, description="规则标题，不传则不改")
-    content: str | None = Field(None, description="规则正文，不传则不改")
+class UpdateDocumentRequest(BaseModel):
+    """更新文档（仅原文文档）"""
+    title: str | None = Field(None, min_length=1, max_length=256, description="文档标题，不传则不改")
+    content: str | None = Field(None, description="文档正文，不传则不改")
 
 
 class DocumentResponse(BaseModel):

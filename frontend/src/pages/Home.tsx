@@ -2,7 +2,6 @@ import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { kbApi, KnowledgeBase } from "../api/knowledgeBase";
-import { ragApi } from "../api/rag";
 import { activityApi, Activity } from "../api/activity";
 
 type KbListTab = "public" | "joined";
@@ -24,7 +23,7 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [aiQuestion, setAiQuestion] = useState("");
   const [aiAnswer, setAiAnswer] = useState("");
-  const [aiLoading, setAiLoading] = useState(false);
+  const aiLoading = false;
   const [feedScope, setFeedScope] = useState<"all" | "mine">("all");
   const [activityList, setActivityList] = useState<Activity[]>([]);
   const [activityLoading, setActivityLoading] = useState(false);
@@ -129,23 +128,7 @@ export default function Home() {
   const handleAsk = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!aiQuestion.trim()) return;
-    const allSelectableKbs = [...listJoined, ...listPublic.filter((kb) => !listJoined.some((j) => j.id === kb.id))];
-    if (allSelectableKbs.length === 0) {
-      setAiAnswer("请先创建或选择知识库");
-      return;
-    }
-    setAiLoading(true);
-    setAiAnswer("");
-    try {
-      const kbIds =
-        selectedKbIds.length === 0 || selectedKbIds.length === allSelectableKbs.length ? undefined : selectedKbIds;
-      const { data } = await ragApi.batchQuery(aiQuestion, kbIds);
-      setAiAnswer(data.answer);
-    } catch {
-      setAiAnswer("查询失败，请检查知识库是否有文档。");
-    } finally {
-      setAiLoading(false);
-    }
+    setAiAnswer("正在开发中...");
   };
 
   const publicOnly = listPublic.filter((kb) => !listJoined.some((j) => j.id === kb.id));

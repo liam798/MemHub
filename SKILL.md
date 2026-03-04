@@ -1,6 +1,6 @@
 ---
 name: memhub
-version: 0.2.2
+version: 0.2.3
 description: 接入 MemHub 记忆仓库：Agent 做渐进式披露检索（先列文档标题，再按需拉取正文），适用于从公司/项目知识库获取信息、按规则执行或引用文档时使用。
 ---
 
@@ -28,8 +28,8 @@ MemHub —— 面向 AI Agent 接入的记忆仓库。
 #   Cursor:     ~/.cursor/skills/memhub
 #   Codex:      ~/.codex/skills/memhub
 #   OpenClaw:   ~/.openclaw/skills/memhub
-#   其他平台:   按该平台文档配置的技能目录
-SKILL_DIR="${SKILL_DIR:-$HOME/.cursor/skills/memhub}"
+#   其他平台:   按对应平台文档确认技能的安目录
+SKILL_DIR=""
 
 mkdir -p "$SKILL_DIR"
 curl -s "__MEMHUB_ORIGIN__/skill.md" > "$SKILL_DIR/SKILL.md"
@@ -38,7 +38,13 @@ curl -s "__MEMHUB_ORIGIN__/skill.md" > "$SKILL_DIR/SKILL.md"
 
 **也可直接通过上表地址在线阅读。**
 
-**检查更新：** 随时重新获取该文件以查看新功能。
+**检查更新（必做）：** 每次会话开始时，Agent 必须检查技能文件是否需更新。状态保存在 `~/.memhub/check-state.json`，使用字段 `lastUpdateCheck`（上次执行检查的时间，**仅使用 ISO8601 格式**，如 `2026-03-04T12:00:00Z`）。若该文件不存在、或 `lastUpdateCheck` 缺失、或距当前时间已超过 **30 分钟**，则必须从当前站点重新获取 `/skill.md` 覆盖本地 SKILL.md，并将本次检查时间写入 `lastUpdateCheck` 后保存回 `~/.memhub/check-state.json`；未超过 30 分钟则可沿用本地技能文件。示例结构：
+
+```json
+{"lastUpdateCheck": "2026-03-04T12:00:00Z"}
+```
+
+写入时保持文件为**单个合法 JSON 对象**，仅更新 `lastUpdateCheck` 字段。
 
 ## 工作流程
 
@@ -140,10 +146,10 @@ X-API-Key: <api_key>
 
 ### 5. 文档管理 API（Agent 可自行为知识库增删改文档）
 
-**新建文档（笔记/MD）**
+**新建文档**
 
 ```
-POST /api/knowledge-bases/{kb_id}/rules
+POST /api/knowledge-bases/{kb_id}/documents/create
 X-API-Key: <api_key>
 Content-Type: application/json
 
@@ -216,7 +222,7 @@ def get_document(kb_id: int, doc_id: int):
 
 # 3) 文档管理
 def create_document(kb_id: int, title: str, content: str):
-    return httpx.post(f"{BASE_URL}/knowledge-bases/{kb_id}/rules", headers=HEADERS, json={"title": title, "content": content}).json()
+    return httpx.post(f"{BASE_URL}/knowledge-bases/{kb_id}/documents/create", headers=HEADERS, json={"title": title, "content": content}).json()
 
 def update_document(kb_id: int, doc_id: int, title: str | None = None, content: str | None = None):
     body = {}
@@ -234,4 +240,4 @@ def delete_document(kb_id: int, doc_id: int):
 |------|------|------|
 | 1 | 关联知识库 | `GET /knowledge-bases?name={项目名}`，无则 `GET /knowledge-bases` 全列表按名匹配；仍无则 `POST /knowledge-bases` 创建，用返回的 `id` 作为 `kb_id` |
 | 2 | 渐进披露检索 | `GET /knowledge-bases/{kb_id}/documents` 得标题列表 → 按标题/`is_rule` 决定要读哪些 → 对需阅读的项 `GET /knowledge-bases/{kb_id}/documents/{doc_id}` 取 `content` → 基于正文回复或执行任务 |
-| 3 | 文档管理（按需） | 当用户要求“保存记忆/规则/结论”等时：新建 `POST .../rules`，或更新 `PATCH .../documents/{doc_id}`，删除 `DELETE .../documents/{doc_id}`（需写权限） |
+| 3 | 文档管理（按需） | 当用户要求“保存记忆/规则/结论”等时：新建 `POST .../documents/create`，或更新 `PATCH .../documents/{doc_id}`，删除 `DELETE .../documents/{doc_id}`（需写权限） |

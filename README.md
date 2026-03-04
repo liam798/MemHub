@@ -88,22 +88,18 @@ MemHub/
 | GET | /api/knowledge-bases | 我的知识库列表 |
 | POST | /api/knowledge-bases | 创建知识库 |
 | GET | /api/knowledge-bases/{id} | 知识库详情 |
+| GET | /api/knowledge-bases/{id}/documents | 文档列表 |
+| GET | /api/knowledge-bases/{id}/documents/{doc_id} | 文档详情（含正文） |
 | POST | /api/knowledge-bases/{id}/documents | 上传文档 |
-| POST | /api/knowledge-bases/{id}/query | RAG 问答 |
-| POST | /api/knowledge-bases/{id}/memory | 写入公共记忆（需写权限，支持 TTL，-1 永久） |
-| POST | /api/knowledge-bases/{id}/memory/query | 查询公共记忆（需读权限） |
-| POST | /api/knowledge-bases/{id}/memory/cleanup | 清理过期公共记忆（需写权限） |
+| POST | /api/knowledge-bases/{id}/documents/create | 新建文档 |
+| PATCH | /api/knowledge-bases/{id}/documents/{doc_id} | 更新文档 |
+| DELETE | /api/knowledge-bases/{id}/documents/{doc_id} | 删除文档 |
 | GET | /api/knowledge-bases/{id}/members | 成员列表 |
 | POST | /api/knowledge-bases/{id}/members | 添加成员 |
 | GET | /health/live | 存活探针 |
 | GET | /health/ready | 就绪探针（含数据库探活） |
 
-**公共记忆说明**
-- `memory` 支持携带 `metadata`（如 `agent_id`/`thread_id`），并会写入向量元数据。
-- `memory/query` 支持 `metadata_filter` 精确过滤（与 `metadata` 同键名）。
-- `metadata` 不允许使用保留字段：`knowledge_base_id`, `type`, `memory_id`, `expires_at`。
-
-**API Key**：调用公开接口时使用（用户菜单 → API Key）。Agent 接入时在 API Key 弹窗中点击「复制 Agent 提示词」即可一键让 Agent 接入 MemHub。
+**API Key**：调用需认证的接口时使用（用户菜单 → API Key）。Agent 接入详见项目根目录 `SKILL.md`。
 
 ## 可靠性与运维建议
 

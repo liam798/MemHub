@@ -21,7 +21,12 @@ from app.schemas.knowledge_base import (
     MemberUpdate,
     MemberResponse,
 )
-from app.schemas.document import DocumentResponse, DocumentDetailResponse, CreateRuleRequest, UpdateRuleRequest
+from app.schemas.document import (
+    DocumentResponse,
+    DocumentDetailResponse,
+    CreateDocumentRequest,
+    UpdateDocumentRequest,
+)
 from app.models.document import Document, CONTENT_TYPE_RULE
 from app.services.knowledge_base import create_knowledge_base, add_member, update_member_role, remove_member
 from app.services.activity import record_activity
@@ -278,14 +283,14 @@ def upload_document(
     return {"document_id": doc.id}
 
 
-@router.post("/{kb_id}/rules")
-def create_rule(
+@router.post("/{kb_id}/documents/create")
+def create_document(
     kb_id: int,
-    data: CreateRuleRequest,
+    data: CreateDocumentRequest,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    """新建规则：原文传给大模型，不向量化。用于 RULE、审查事项等需原文生效的内容。"""
+    """新建文档：原文传给大模型，不向量化。用于规则、记忆、审查事项等需原文生效的内容。"""
     kb = _get_kb(db, kb_id)
     if not kb:
         raise HTTPException(status_code=404, detail="知识库不存在")
@@ -386,7 +391,7 @@ def get_document(
 def update_document(
     kb_id: int,
     doc_id: int,
-    body: UpdateRuleRequest,
+    body: UpdateDocumentRequest,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
