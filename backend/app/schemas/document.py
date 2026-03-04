@@ -22,12 +22,11 @@ class DocumentResponse(BaseModel):
     chunk_count: int
     created_at: str | None = None
     updated_at: str | None = None
-    is_rule: bool = False  # 是否为规则（原文传给模型，不向量化）
 
     class Config:
         from_attributes = True
 
 
 class DocumentDetailResponse(DocumentResponse):
-    """文档详情，规则类包含 content"""
+    """文档详情"""
     content: str | None = None

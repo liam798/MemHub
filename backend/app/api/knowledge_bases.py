@@ -73,20 +73,13 @@ def list_my_knowledge_bases(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
     scope: Annotated[
-        Literal["joined", "public"],
-        Query(description="joined=我参与的(拥有+成员), public=公开知识库"),
+        Literal["joined", "public", "all"],
+        Query(description="joined=我参与的(拥有+成员), public=公开知识库, all=joined+public(去重)"),
     ] = "joined",
     name: Annotated[str | None, Query(description="按名称模糊匹配，用于 Agent 根据项目名关联知识库")] = None,
 ):
-    """知识库列表。scope=joined 返回我拥有或参与的知识库，scope=public 返回全部公开知识库。name 不为空时仅返回名称包含该字符串的知识库（不区分大小写）。"""
-    if scope == "public":
-        all_kbs = (
-            db.query(KnowledgeBase)
-            .filter(KnowledgeBase.visibility == Visibility.PUBLIC)
-            .order_by(KnowledgeBase.updated_at.desc(), KnowledgeBase.created_at.desc())
-            .all()
-        )
-    else:
+    """知识库列表。scope=joined 返回我拥有或参与的知识库，scope=public 返回全部公开知识库，scope=all 返回两者并去重。name 不为空时仅返回名称包含该字符串的知识库（不区分大小写）。"""
+    def _joined_kbs() -> list[KnowledgeBase]:
         owned = db.query(KnowledgeBase).filter(KnowledgeBase.owner_id == current_user.id).all()
         member_kbs = (
             db.query(KnowledgeBase)
@@ -94,11 +87,25 @@ def list_my_knowledge_bases(
             .filter(KnowledgeBaseMember.user_id == current_user.id)
             .all()
         )
-        all_kbs = list({kb.id: kb for kb in owned + member_kbs}.values())
-        all_kbs.sort(
-            key=lambda kb: (kb.updated_at or kb.created_at or datetime.min),
-            reverse=True,
+        kbs = list({kb.id: kb for kb in owned + member_kbs}.values())
+        kbs.sort(key=lambda kb: (kb.updated_at or kb.created_at or datetime.min), reverse=True)
+        return kbs
+
+    def _public_kbs() -> list[KnowledgeBase]:
+        return (
+            db.query(KnowledgeBase)
+            .filter(KnowledgeBase.visibility == Visibility.PUBLIC)
+            .order_by(KnowledgeBase.updated_at.desc(), KnowledgeBase.created_at.desc())
+            .all()
         )
+
+    if scope == "public":
+        all_kbs = _public_kbs()
+    elif scope == "all":
+        all_kbs = list({kb.id: kb for kb in (_joined_kbs() + _public_kbs())}.values())
+        all_kbs.sort(key=lambda kb: (kb.updated_at or kb.created_at or datetime.min), reverse=True)
+    else:
+        all_kbs = _joined_kbs()
 
     if name and name.strip():
         needle = name.strip().lower()
@@ -312,7 +319,7 @@ def create_document(
     db.refresh(doc)
     record_activity(
         db, current_user.id, ActivityAction.CREATE_NOTE, kb_id,
-        {"filename": filename, "document_id": doc.id, "rule": True},
+        {"filename": filename, "document_id": doc.id},
     )
     return {"document_id": doc.id}
 
@@ -348,7 +355,6 @@ def list_documents(
             chunk_count=d.chunk_count or 0,
             created_at=d.created_at.isoformat() if d.created_at else None,
             updated_at=(d.updated_at or d.created_at).isoformat() if (d.updated_at or d.created_at) else None,
-            is_rule=(d.content_type == CONTENT_TYPE_RULE),
         )
         for d in docs
     ]
@@ -361,7 +367,7 @@ def get_document(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    """获取文档详情，规则类返回 content"""
+    """获取文档详情"""
     kb = _get_kb(db, kb_id)
     if not kb:
         raise HTTPException(status_code=404, detail="知识库不存在")
@@ -373,7 +379,6 @@ def get_document(
     ).first()
     if not doc:
         raise HTTPException(status_code=404, detail="文档不存在")
-    content = (doc.content if doc.content_type == CONTENT_TYPE_RULE else None) or None
     return DocumentDetailResponse(
         id=doc.id,
         filename=doc.filename,
@@ -382,8 +387,7 @@ def get_document(
         chunk_count=doc.chunk_count or 0,
         created_at=doc.created_at.isoformat() if doc.created_at else None,
         updated_at=(doc.updated_at or doc.created_at).isoformat() if (doc.updated_at or doc.created_at) else None,
-        is_rule=(doc.content_type == CONTENT_TYPE_RULE),
-        content=content,
+        content=doc.content or None,
     )
 
 
@@ -395,7 +399,7 @@ def update_document(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    """更新文档：仅规则类文档可更新，可修改标题与正文。"""
+    """更新文档，可修改标题与正文。"""
     kb = _get_kb(db, kb_id)
     if not kb:
         raise HTTPException(status_code=404, detail="知识库不存在")
@@ -426,7 +430,7 @@ def delete_document(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    """删除文档。规则类无向量；普通文档会同时删除向量库中对应块。"""
+    """删除文档。若存在历史向量块则同时清理。"""
     kb = _get_kb(db, kb_id)
     if not kb:
         raise HTTPException(status_code=404, detail="知识库不存在")
@@ -439,17 +443,16 @@ def delete_document(
     if not doc:
         raise HTTPException(status_code=404, detail="文档不存在")
     filename = doc.filename
-    is_rule = doc.content_type == CONTENT_TYPE_RULE
-    if not is_rule:
+    needs_vector_cleanup = doc.content_type != CONTENT_TYPE_RULE
+    if needs_vector_cleanup:
         from app.rag.vector_store import delete_vectors_by_filter
         delete_vectors_by_filter(kb_id, {"document_id": doc_id})
     db.delete(doc)
     db.commit()
-    if is_rule:
-        record_activity(
-            db, current_user.id, ActivityAction.DELETE_NOTE, kb_id,
-            {"filename": filename, "document_id": doc_id},
-        )
+    record_activity(
+        db, current_user.id, ActivityAction.DELETE_NOTE, kb_id,
+        {"filename": filename, "document_id": doc_id},
+    )
     return {"message": "已删除"}
 
 

@@ -32,7 +32,6 @@ export interface Document {
   chunk_count: number;
   created_at?: string;
   updated_at?: string;
-  is_rule?: boolean;
 }
 
 export interface DocumentDetail extends Document {
@@ -40,7 +39,7 @@ export interface DocumentDetail extends Document {
 }
 
 export const kbApi = {
-  list: (params?: { scope?: "joined" | "public"; name?: string }) =>
+  list: (params?: { scope?: "joined" | "public" | "all"; name?: string }) =>
     client.get<KnowledgeBase[]>("/knowledge-bases", { params }),
   create: (data: { name: string; description?: string; visibility?: Visibility }) =>
     client.post<KnowledgeBase>("/knowledge-bases", data),
