@@ -17,15 +17,21 @@
 - **前端**：React + TypeScript + Tailwind CSS
 - **RAG**：LangChain + OpenAI Embeddings
 
-## 一键安装
+## 一键安装（全 Docker 部署）
 
-已安装 Docker 时，执行以下命令将自动安装环境并启动 MemHub：
+已安装 Docker 时，执行以下命令将自动完成全部容器部署（Postgres + Backend + Frontend）：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/liam798/MemHub/main/scripts/install.sh | bash
+git clone https://github.com/liam798/MemHub.git
+cd MemHub
+bash scripts/install.sh
 ```
 
-## 源码开发
+安装完成后访问：
+- 前端：`http://localhost:3100`
+- 后端：`http://localhost:8000`
+
+## 源码开发（本机运行）
 
 ### 环境要求
 

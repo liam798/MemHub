@@ -1,8 +1,17 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
 MEMHUB_REPO="${MEMHUB_REPO:-https://github.com/liam798/MemHub.git}"
-MEMHUB_HOME="${MEMHUB_HOME:-$(pwd)/MemHub}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT_FROM_SCRIPT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+if [[ -f "$REPO_ROOT_FROM_SCRIPT/docker-compose.yml" && -d "$REPO_ROOT_FROM_SCRIPT/backend" && -d "$REPO_ROOT_FROM_SCRIPT/frontend" ]]; then
+  DEFAULT_MEMHUB_HOME="$REPO_ROOT_FROM_SCRIPT"
+else
+  DEFAULT_MEMHUB_HOME="$(pwd)/MemHub"
+fi
+
+MEMHUB_HOME="${MEMHUB_HOME:-$DEFAULT_MEMHUB_HOME}"
 
 echo "==> MemHub 一键部署"
 echo "    安装目录: $MEMHUB_HOME"
@@ -27,9 +36,6 @@ else
   cd "$MEMHUB_HOME"
 fi
 
-echo "==> 启动 PostgreSQL (Docker)..."
-docker compose up -d
-
 echo "==> 检查 backend/.env"
 NEED_ENV_REMIND=false
 if [[ ! -f backend/.env ]]; then
@@ -46,16 +52,14 @@ if [[ "$NEED_ENV_REMIND" == "true" ]]; then
   echo "    ⚠ 请编辑 backend/.env 填写 OPENAI_API_KEY 后再使用 RAG 功能。"
 fi
 
-echo "==> 安装后端依赖并执行数据库迁移..."
-(cd backend && pip install -q -r requirements.txt 2>/dev/null; alembic upgrade head)
-
-echo "==> 安装前端依赖..."
-(cd frontend && npm install)
+echo "==> 使用 Docker 构建并启动全部服务（postgres/backend/frontend）..."
+docker compose up -d --build
 
 echo ""
-echo "==> 安装完成。运行以下命令启动服务："
-echo "    cd $MEMHUB_HOME && ./scripts/startup.sh"
-echo ""
-echo "或直接执行："
-echo "    ./scripts/startup.sh"
+echo "==> 安装完成，服务已启动"
+echo "    前端: http://localhost:3100"
+echo "    后端: http://localhost:8000"
+echo "    查看状态: cd $MEMHUB_HOME && docker compose ps"
+echo "    查看日志: cd $MEMHUB_HOME && docker compose logs -f"
+echo "    重启服务: cd $MEMHUB_HOME && ./scripts/startup.sh"
 echo ""
