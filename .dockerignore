@@ -6,8 +6,8 @@
 .env
 .env.example
 *.md
+!SKILL.md
 LICENSE
 
 docker-compose.yml
 docker-setup.sh
-

@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     API_V1_PREFIX: str = "/api"
     ALLOWED_ORIGINS: str = "*"
+    # 前端地址，用于 401 等提示中的登录地址（如 http://localhost:3100）
+    FRONTEND_URL: str = "http://localhost:3100"
 
     # 数据库
     DATABASE_URL: str = "postgresql://postgres:password@localhost:5532/memhub"

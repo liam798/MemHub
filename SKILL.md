@@ -10,10 +10,10 @@ MemHub —— 面向 AI Agent 接入的记忆仓库。
 
 ## Agent 必读（速查）
 
-- **认证**：每次请求 Header 必须带 `X-API-Key`。优先从 `~/.memhub/credentials.json` 读取 `api_key`；若无或无效则提示用户到 MemHub 面板复制 API Key 并提供给你。
+- **认证**：每次请求 Header 必须带 `X-API-Key`。优先从 `~/.memhub/credentials.json` 读取 `api_key`；若无或无效则提示用户先访问登录页 `__MEMHUB_ORIGIN__/login` 登录，再到 MemHub 面板复制 API Key 并提供给你。
 - **BASE_URL**：接口根地址为 `{MemHub 前端域名}/api`，例如 `https://memhub.example.com/api`。本地开发多为 `http://localhost:3100/api`（前端代理到后端）。
 - **每次响应用户前必做**：1）按项目/工作区名关联知识库（`GET /knowledge-bases?name=...`，无则创建）；2）渐进披露检索——先 `GET /knowledge-bases/{kb_id}/documents` 拿文档标题，再按需 `GET .../documents/{doc_id}` 拉取正文，基于正文回复或执行任务。**不调用 RAG 问答接口。**
-- **错误处理**：`401` → 提示用户配置 API Key；`403` → 无该知识库/文档权限；`404` → 知识库或文档不存在。
+- **错误处理**：`401` → 提示用户先访问 `__MEMHUB_ORIGIN__/login` 登录，并在右上角用户菜单 → API Key 中查看/生成后提供；`403` → 无该知识库/文档权限；`404` → 知识库或文档不存在。
 
 ## 技能文件
 
@@ -48,7 +48,7 @@ curl -s "__MEMHUB_ORIGIN__/skill.md" > "$SKILL_DIR/SKILL.md"
 
 ## 工作流程
 
-1. **确认 API Key**：每次发起 MemHub 请求前，Agent 必须主动尝试从 `~/.memhub/credentials.json` 读取 `api_key` 并使用；仅当该文件不存在、或 key 无效、或用户未提供时，才在回复中**既要**给出正文内容**也要**提示用户登录 MemHub、在面板「API Key」中查看并复制后提供给 Agent。
+1. **确认 API Key**：每次发起 MemHub 请求前，Agent 必须主动尝试从 `~/.memhub/credentials.json` 读取 `api_key` 并使用；仅当该文件不存在、或 key 无效、或用户未提供时，才在回复中**既要**给出正文内容**也要**提示用户先访问 `__MEMHUB_ORIGIN__/login` 登录，再在面板「API Key」中查看并复制后提供给 Agent。
 2. **规则配置**：持有 API Key 后，将「每次响应用户前**必须先**对 MemHub 执行渐进式披露检索（列文档 → 按需拉正文），不调用 RAG 问答」写入或更新到全局规则（如 Cursor `.cursor/rules/RULE_MemHub.md`、Codex `.codex/AGENTS.md`）。
 3. **关联知识库**：根据当前项目/工作区名称自动关联知识库。先调用 `GET /api/knowledge-bases?name={项目名}`（如 `name=android` 可匹配 `liam/android`）；若无结果再调用 `GET /api/knowledge-bases` 取全部可访问知识库并按名称匹配。**若仍无匹配，Agent 可自动调用「创建知识库」接口，以当前项目/工作区名称为 `name` 创建新知识库（默认私有），再继续后续检索与文档管理。**
 4. **渐进披露检索**（必做）：先列标题，再按需拉正文。
@@ -71,7 +71,7 @@ curl -s "__MEMHUB_ORIGIN__/skill.md" > "$SKILL_DIR/SKILL.md"
 
 ## 获取 API Key
 
-**禁止：** Agent **不得**代替用户注册或登录 MemHub，**不得**自行调用注册/登录接口。未持有用户提供的 API Key 时，**必须**提示用户：「请先访问 MemHub 前端自行注册并登录，在面板右上角用户菜单 → API Key 中查看或生成，将 API Key 复制后提供给 Agent 使用。」
+**禁止：** Agent **不得**代替用户注册或登录 MemHub，**不得**自行调用注册/登录接口。未持有用户提供的 API Key 时，**必须**提示用户：「请先访问 MemHub 前端登录页 `__MEMHUB_ORIGIN__/login` 自行注册并登录；登录后在面板右上角用户菜单 → API Key 中查看或生成，将 API Key 复制后提供给 Agent 使用。」
 
 ### 1. 注册与登录
 
@@ -93,7 +93,7 @@ curl -s "__MEMHUB_ORIGIN__/skill.md" > "$SKILL_DIR/SKILL.md"
 
 > 该文件必须是**单个合法 JSON 对象**。若文件已存在，请更新其中的 `api_key` 字段，而不是在文件末尾继续追加第二个 `{ "api_key": "xxx" }`，避免出现 `{...}{...}` 这类无法解析的内容。
 
-**Agent 必做：** 调用任何 MemHub 接口前，先读 `~/.memhub/credentials.json`（若存在）中的 `api_key`，作为请求头 `X-API-Key` 携带；未读到或请求返回 401 时，提示用户到 MemHub 面板复制 API Key 并保存到该文件或提供给你。
+**Agent 必做：** 调用任何 MemHub 接口前，先读 `~/.memhub/credentials.json`（若存在）中的 `api_key`，作为请求头 `X-API-Key` 携带；未读到或请求返回 401 时，提示用户先访问 `__MEMHUB_ORIGIN__/login` 登录，再到 MemHub 面板复制 API Key 并保存到该文件或提供给你。
 
 ## API 说明
 

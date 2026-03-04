@@ -5,6 +5,7 @@ from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import decode_access_token
 from app.models.user import User
@@ -20,7 +21,7 @@ def get_current_user(
     """获取当前用户：支持 JWT（Authorization: Bearer）或 API Key（X-API-Key）"""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="请先注册并登录，在面板查看 API Key 后提供给 Agent",
+        detail=f"请先访问 {settings.FRONTEND_URL} 注册并登录，在面板「用户菜单 → API Key」中查看或生成后提供给 Agent",
         headers={"WWW-Authenticate": "Bearer"},
     )
     # 1. 尝试 API Key
