@@ -128,7 +128,7 @@ export default function Home() {
   const handleAsk = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!aiQuestion.trim()) return;
-    setAiAnswer("此功能正在开发中...");
+    setAiAnswer("正在开发中...");
   };
 
   const publicOnly = listPublic.filter((kb) => !listJoined.some((j) => j.id === kb.id));
