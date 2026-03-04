@@ -84,9 +84,19 @@ async def request_context_middleware(request: Request, call_next):
 def _skill_md_path() -> Path:
     if settings.SKILL_MD_PATH:
         return Path(settings.SKILL_MD_PATH)
-    # 默认：项目根目录 SKILL.md（backend/app/main.py -> 上级两级为 backend，再上级为项目根）
-    root = Path(__file__).resolve().parent.parent.parent
-    return root / "SKILL.md"
+    # 兼容本机与容器路径：
+    # - 本机源码: <repo>/backend/app/main.py -> <repo>/SKILL.md
+    # - 容器镜像: /app/app/main.py -> /app/SKILL.md
+    file_path = Path(__file__).resolve()
+    candidates = [
+        file_path.parent.parent.parent / "SKILL.md",
+        file_path.parent.parent / "SKILL.md",
+        Path.cwd() / "SKILL.md",
+    ]
+    for path in candidates:
+        if path.exists():
+            return path
+    return candidates[0]
 
 
 @app.get("/skill.md")

@@ -42,6 +42,7 @@ curl -fsSL https://raw.githubusercontent.com/liam798/MemHub/main/scripts/install
 ```bash
 cd backend
 cp .env.example .env  # 配置数据库与 OpenAI API Key
+# 如果直接在本机运行 PostgreSQL 映射 5532 端口，请将 .env 中的 DATABASE_URL 替换为 localhost:5532
 pip install -r requirements.txt
 alembic upgrade head
 uvicorn app.main:app --reload
