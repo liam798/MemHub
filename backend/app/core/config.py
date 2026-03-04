@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: str = "*"
 
     # 数据库
-    DATABASE_URL: str = "postgresql://postgres:password@localhost:5432/memhub"
+    DATABASE_URL: str = "postgresql://postgres:password@localhost:5532/memhub"
     DB_POOL_SIZE: int = 10
     DB_MAX_OVERFLOW: int = 20
     DB_POOL_TIMEOUT_SECONDS: int = 30
