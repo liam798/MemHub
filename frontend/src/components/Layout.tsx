@@ -3,6 +3,9 @@ import { Outlet, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { authApi } from "../api/auth";
 
+type CopyTarget = "apiKey" | "agentPrompt";
+type CopyStatus = { target: CopyTarget; kind: "success" | "error"; message: string } | null;
+
 export default function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -10,7 +13,8 @@ export default function Layout() {
   const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false);
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [loadingApiKey, setLoadingApiKey] = useState(false);
-  const [copyFeedback, setCopyFeedback] = useState<"apiKey" | "agentPrompt" | null>(null);
+  const [copyFeedback, setCopyFeedback] = useState<CopyTarget | null>(null);
+  const [copyStatus, setCopyStatus] = useState<CopyStatus>(null);
 
   const handleLogout = () => {
     setUserMenuOpen(false);
@@ -22,6 +26,7 @@ export default function Layout() {
     setUserMenuOpen(false);
     setApiKeyModalOpen(true);
     setCopyFeedback(null);
+    setCopyStatus(null);
     setLoadingApiKey(true);
     setApiKey(null);
     try {
@@ -47,11 +52,39 @@ export default function Layout() {
     }
   };
 
-  const copyApiKey = () => {
-    if (apiKey) {
-      navigator.clipboard.writeText(apiKey);
-      setCopyFeedback("apiKey");
+  const fallbackCopyText = (text: string) => {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "true");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(textarea);
+    return ok;
+  };
+
+  const copyText = async (text: string, target: CopyTarget) => {
+    if (!text) {
+      setCopyStatus({ target, kind: "error", message: "无可复制内容" });
+      return;
+    }
+    try {
+      if (navigator.clipboard?.writeText && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const ok = fallbackCopyText(text);
+        if (!ok) throw new Error("fallback copy failed");
+      }
+      setCopyFeedback(target);
+      setCopyStatus({ target, kind: "success", message: "已复制到剪贴板" });
       setTimeout(() => setCopyFeedback(null), 2000);
+      setTimeout(() => setCopyStatus((prev) => (prev?.target === target ? null : prev)), 3000);
+    } catch {
+      setCopyFeedback(null);
+      setCopyStatus({ target, kind: "error", message: "复制失败，请手动选择文本复制" });
     }
   };
 
@@ -59,16 +92,12 @@ export default function Layout() {
     typeof window !== "undefined" ? window.location.origin : "";
   const agentPrompt =
     apiKey && baseUrl
-      ? `Read ${baseUrl}/skill.md and follow the instructions to join MemHub. Use this API Key: ${apiKey}\n\nIf access fails, try without proxy (e.g. curl --noproxy '*' -fsSL ${baseUrl}/skill.md).`
+      ? `Read ${baseUrl}/skill.md and follow the instructions to join MemHub.\n\nIf access fails, try without proxy (e.g. curl --noproxy '*' -fsSL ${baseUrl}/skill.md\n\nUse this API Key: ${apiKey}).`
       : "";
 
-  const copyAgentPrompt = () => {
-    if (agentPrompt) {
-      navigator.clipboard.writeText(agentPrompt);
-      setCopyFeedback("agentPrompt");
-      setTimeout(() => setCopyFeedback(null), 2000);
-    }
-  };
+  const copyApiKey = () => copyText(apiKey || "", "apiKey");
+
+  const copyAgentPrompt = () => copyText(agentPrompt, "agentPrompt");
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
@@ -143,7 +172,7 @@ export default function Layout() {
               调用公开接口时在请求头携带 <code className="bg-slate-100 px-1 rounded">X-API-Key</code>。
             </p>
             {loadingApiKey ? (
-              <p className="text-sm text-slate-500">加载中ƒ...</p>
+              <p className="text-sm text-slate-500">加载中...</p>
             ) : apiKey ? (
               <div className="space-y-3">
                 <div className="flex gap-2">
@@ -164,6 +193,11 @@ export default function Layout() {
                     {copyFeedback === "apiKey" ? "✓ 已复制" : "复制"}
                   </button>
                 </div>
+                {copyStatus?.target === "apiKey" && (
+                  <p className={`text-xs ${copyStatus.kind === "success" ? "text-emerald-600" : "text-red-500"}`}>
+                    {copyStatus.message}
+                  </p>
+                )}
                 <button
                   onClick={handleRegenerateApiKey}
                   className="text-sm text-amber-600 hover:text-amber-700"
@@ -188,6 +222,11 @@ export default function Layout() {
                   >
                     {copyFeedback === "agentPrompt" ? "✓ 已复制" : "复制 Agent 提示词"}
                   </button>
+                  {copyStatus?.target === "agentPrompt" && (
+                    <p className={`mt-2 text-xs ${copyStatus.kind === "success" ? "text-emerald-600" : "text-red-500"}`}>
+                      {copyStatus.message}
+                    </p>
+                  )}
                 </div>
               </div>
             ) : null}

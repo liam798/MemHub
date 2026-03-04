@@ -95,11 +95,7 @@ export default function KnowledgeBase() {
     ? documents.filter((d) => d.filename.toLowerCase().includes(searchQuery.trim().toLowerCase()))
     : documents;
 
-  const handleViewDoc = async (doc: { id: number; filename: string; is_rule?: boolean }) => {
-    if (!doc.is_rule) {
-      alert("仅规则类文档可查看原文");
-      return;
-    }
+  const handleViewDoc = async (doc: { id: number; filename: string }) => {
     setViewDocId(doc.id);
     setViewLoading(true);
     setShowViewModal(true);
@@ -123,11 +119,7 @@ export default function KnowledgeBase() {
     setShowNoteModal(true);
   };
 
-  const handleEditDoc = async (doc: { id: number; filename: string; is_rule?: boolean }) => {
-    if (!doc.is_rule) {
-      alert("仅文档可编辑");
-      return;
-    }
+  const handleEditDoc = async (doc: { id: number; filename: string }) => {
     try {
       const { data } = await kbApi.getDocument(kbId, doc.id);
       setNoteDocId(doc.id);
@@ -139,11 +131,7 @@ export default function KnowledgeBase() {
     }
   };
 
-  const handleDownloadDoc = async (doc: { id: number; filename: string; is_rule?: boolean }) => {
-    if (!doc.is_rule) {
-      alert("仅规则类文档可下载");
-      return;
-    }
+  const handleDownloadDoc = async (doc: { id: number; filename: string }) => {
     try {
       const { data } = await kbApi.getDocument(kbId, doc.id);
       const blob = new Blob([data.content ?? ""], { type: "text/markdown;charset=utf-8" });
@@ -475,17 +463,13 @@ export default function KnowledgeBase() {
                       <input type="checkbox" className="rounded" />
                     </td>
                     <td className="py-3 px-4">
-                      {doc.is_rule ? (
-                        <button
-                          type="button"
-                          onClick={() => handleViewDoc(doc)}
-                          className="font-medium text-slate-800 hover:text-primary-600 hover:underline text-left cursor-pointer"
-                        >
-                          {doc.filename.replace(/\.md$/i, "")}
-                        </button>
-                      ) : (
-                        <span className="font-medium text-slate-800">{doc.filename}</span>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleViewDoc(doc)}
+                        className="font-medium text-slate-800 hover:text-primary-600 hover:underline text-left cursor-pointer"
+                      >
+                        {doc.filename.replace(/\.md$/i, "")}
+                      </button>
                     </td>
                     <td className="py-3 px-4 text-slate-600">{formatSize(doc.file_size)}</td>
                     <td className="py-3 px-4 text-slate-500 text-sm">{formatUpdatedAt(doc.updated_at ?? doc.created_at)}</td>

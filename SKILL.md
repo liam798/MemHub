@@ -12,7 +12,7 @@ MemHub —— 面向 AI Agent 接入的记忆仓库。
 
 - **认证**：每次请求 Header 必须带 `X-API-Key`。优先从 `~/.memhub/credentials.json` 读取 `api_key`；若无或无效则提示用户先访问登录页 `__MEMHUB_ORIGIN__/login` 登录，再到 MemHub 面板复制 API Key 并提供给你。
 - **BASE_URL**：接口根地址为 `__MEMHUB_ORIGIN__/api`。
-- **每次响应用户前必做**：1）按项目/工作区名关联知识库（`GET /knowledge-bases?name=...`，无则创建）；2）渐进披露检索——先 `GET /knowledge-bases/{kb_id}/documents` 拿文档标题，再按需 `GET .../documents/{doc_id}` 拉取正文，基于正文回复或执行任务。**不调用 RAG 问答接口。**
+- **每次响应用户前必做**：1）先对全部可访问知识库做披露（`GET /knowledge-bases?scope=all`，基于知识库标题/描述筛选候选）；2）再做项目关联（按项目名匹配）；3）渐进披露检索——先 `GET /knowledge-bases/{kb_id}/documents` 拿文档标题，再按需 `GET .../documents/{doc_id}` 拉取正文，基于正文回复或执行任务。
 - **错误处理**：`401` → 提示用户先访问 `__MEMHUB_ORIGIN__/login` 登录，并在右上角用户菜单 → API Key 中查看/生成后提供；`403` → 无该知识库/文档权限；`404` → 知识库或文档不存在。
 
 ## 技能文件
@@ -49,12 +49,13 @@ curl -s "__MEMHUB_ORIGIN__/skill.md" > "$SKILL_DIR/SKILL.md"
 ## 工作流程
 
 1. **确认 API Key**：每次发起 MemHub 请求前，Agent 必须主动尝试从 `~/.memhub/credentials.json` 读取 `api_key` 并使用；仅当该文件不存在、或 key 无效、或用户未提供时，才在回复中**既要**给出正文内容**也要**提示用户先访问 `__MEMHUB_ORIGIN__/login` 登录，再在面板「API Key」中查看并复制后提供给 Agent。
-2. **规则配置**：持有 API Key 后，将「每次响应用户前**必须先**对 MemHub 执行渐进式披露检索（列文档 → 按需拉正文），不调用 RAG 问答」写入或更新到全局规则（如 Cursor `.cursor/rules/RULE_MemHub.md`、Codex `.codex/AGENTS.md`）。
-3. **关联知识库**：根据当前项目/工作区名称自动关联知识库。先调用 `GET /api/knowledge-bases?name={项目名}`（如 `name=android` 可匹配 `liam/android`）；若无结果再调用 `GET /api/knowledge-bases` 取全部可访问知识库并按名称匹配。**若仍无匹配，Agent 可自动调用「创建知识库」接口，以当前项目/工作区名称为 `name` 创建新知识库（默认私有），再继续后续检索与文档管理。**
-4. **渐进披露检索**（必做）：先列标题，再按需拉正文。
-   - 用选定的 `kb_id` 调用 `GET /api/knowledge-bases/{kb_id}/documents` 得到文档列表（`id`、`filename`、`is_rule` 等）。
-   - **按需拉取正文**：与用户问题或任务相关的文档、或 `is_rule=true` 的规则建议拉取；对需要阅读的条目调用 `GET /api/knowledge-bases/{kb_id}/documents/{doc_id}` 获取 `content`，基于正文回复或执行任务。不要一次请求全部文档正文。
-5. **文档管理与持久化记忆**：当用户要求新建/修改/删除知识库内文档，或明确提出“帮我记住”“保存为规则/笔记”“写入记忆”等意图时，必须调用文档管理 API（仅 MD/笔记类）将信息写入对应知识库文档（新建或追加），见下文「文档管理 API」。
+2. **规则配置**：持有 API Key 后，将「每次响应用户前**必须先**对 MemHub 执行渐进式披露检索（列文档 → 按需拉正文）」写入或更新到全局规则（如 Cursor `.cursor/rules/RULE_MemHub.md`、Codex `.codex/AGENTS.md`）。
+3. **关联知识库（先全局披露，再项目关联）**：先调用 `GET /api/knowledge-bases?scope=all` 获取全部可访问知识库，基于知识库 `name` 与 `description` 做候选筛选（全局层）；然后再按当前项目/工作区名匹配“项目关联库”（项目层）。注意：`name` 查询参数仅匹配名称，不覆盖描述匹配，因此描述匹配必须基于 `scope=all` 全量结果在 Agent 侧完成。**若项目层与全局层均无匹配，Agent 可自动调用「创建知识库」接口，以当前项目/工作区名称为 `name` 创建新知识库（默认私有），再继续后续检索与文档管理。**
+4. **冲突处理优先级（类 AGENTS 继承）**：当不同知识库文档出现冲突时，优先采用“项目关联库”的文档内容；无冲突时可合并采纳。同层冲突按 `updated_at` 较新的文档优先，并在输出中标注冲突与取舍依据。
+5. **渐进披露检索**（必做）：先列标题，再按需拉正文。
+  - 用选定的 `kb_id` 调用 `GET /api/knowledge-bases/{kb_id}/documents` 得到文档列表（`id`、`filename` 等）。
+  - **按需拉取正文**：优先拉取与用户问题、当前任务、当前项目直接相关的文档；对需要阅读的条目调用 `GET /api/knowledge-bases/{kb_id}/documents/{doc_id}` 获取 `content`，基于正文回复或执行任务。不要一次请求全部文档正文。
+6. **文档管理与持久化记忆**：当用户要求新建/修改/删除知识库内文档，或明确提出“帮我记住”“保存为规则/笔记”“写入记忆”等意图时，必须调用文档管理 API（仅 MD/笔记类）将信息写入对应知识库文档（新建或追加），见下文「文档管理 API」。
 
 ## 输出规范
 
@@ -105,12 +106,12 @@ curl -s "__MEMHUB_ORIGIN__/skill.md" > "$SKILL_DIR/SKILL.md"
 ### 1. 列出知识库（支持按项目名关联）
 
 ```
-GET /api/knowledge-bases?scope=joined|public&name=可选名称
+GET /api/knowledge-bases?scope=joined|public|all&name=可选名称
 X-API-Key: <api_key>
 ```
 
-- `scope=joined`（默认）：我拥有或参与的知识库；`scope=public`：全部公开知识库。
-- `name`：模糊匹配知识库名称（不区分大小写），用于 Agent 根据项目名关联，例如 `name=android` 可匹配 `liam/android`。
+- `scope=joined`（默认）：我拥有或参与的知识库；`scope=public`：全部公开知识库；`scope=all`：joined + public 去重合并（推荐 Agent 先做全局披露时使用）。
+- `name`：仅按知识库名称模糊匹配，不匹配 `description`。若需要“标题+描述”联合匹配，请先 `scope=all` 拉全量后在 Agent 侧筛选。
 
 返回列表每项含 `id`、`name`、`owner_username`、`document_count` 等。示例：`[{"id":1,"name":"my-kb","owner_username":"alice","document_count":3}]`。
 
@@ -133,7 +134,7 @@ GET /api/knowledge-bases/{kb_id}/documents
 X-API-Key: <api_key>
 ```
 
-返回文档列表，每项含 `id`、`filename`（标题，MD 不含后缀）、`file_size`、`updated_at`、`is_rule`。**Agent 先据此判断是否需要正文**：与用户问题或当前任务相关的标题、或 `is_rule=true` 的规则类文档建议拉取正文；再按需调用「获取文档详情」取 `content`，避免一次拉取全部。
+返回文档列表，每项含 `id`、`filename`（标题，MD 不含后缀）、`file_size`、`updated_at`。**Agent 先据此判断是否需要正文**：与用户问题或当前任务相关的标题建议拉取正文；再按需调用「获取文档详情」取 `content`，避免一次拉取全部。
 
 ### 4. 获取文档详情（按需拉取正文）
 
@@ -182,11 +183,13 @@ X-API-Key: <api_key>
 ```bash
 BASE_URL="__MEMHUB_ORIGIN__/api"
 API_KEY="用户提供的API_Key"
-# 1) 按项目名关联知识库
-curl -s "$BASE_URL/knowledge-bases?scope=joined&name=项目名" -H "X-API-Key: $API_KEY"
-# 2) 列文档标题
+# 1) 先拿全部可访问知识库（Agent 基于 name+description 本地筛选候选）
+curl -s "$BASE_URL/knowledge-bases?scope=all" -H "X-API-Key: $API_KEY"
+# 2) 再基于项目名匹配项目关联库（可选：仅名称匹配）
+curl -s "$BASE_URL/knowledge-bases?scope=all&name=项目名" -H "X-API-Key: $API_KEY"
+# 3) 列文档标题
 curl -s "$BASE_URL/knowledge-bases/{kb_id}/documents" -H "X-API-Key: $API_KEY"
-# 3) 按需拉取正文
+# 4) 按需拉取正文
 curl -s "$BASE_URL/knowledge-bases/{kb_id}/documents/{doc_id}" -H "X-API-Key: $API_KEY"
 ```
 
@@ -213,7 +216,7 @@ def create_kb(name: str, description: str = "", visibility: str = "private"):
         json={"name": name, "description": description, "visibility": visibility},
     ).json()
 
-# 2) 渐进披露：先列文档标题，再按需拉取正文（Agent 必用，不调用 RAG）
+# 2) 渐进披露：先列文档标题，再按需拉取正文（Agent 必用）
 def list_documents(kb_id: int):
     return httpx.get(f"{BASE_URL}/knowledge-bases/{kb_id}/documents", headers=HEADERS).json()
 
@@ -238,6 +241,6 @@ def delete_document(kb_id: int, doc_id: int):
 
 | 步骤 | 动作 | 说明 |
 |------|------|------|
-| 1 | 关联知识库 | `GET /knowledge-bases?name={项目名}`，无则 `GET /knowledge-bases` 全列表按名匹配；仍无则 `POST /knowledge-bases` 创建，用返回的 `id` 作为 `kb_id` |
-| 2 | 渐进披露检索 | `GET /knowledge-bases/{kb_id}/documents` 得标题列表 → 按标题/`is_rule` 决定要读哪些 → 对需阅读的项 `GET /knowledge-bases/{kb_id}/documents/{doc_id}` 取 `content` → 基于正文回复或执行任务 |
+| 1 | 关联知识库 | 先 `GET /knowledge-bases?scope=all` 按知识库标题+描述做全局披露筛选，再按项目名做项目关联；发生冲突时以项目关联库文档为准；仍无匹配则 `POST /knowledge-bases` 创建并使用返回 `id` |
+| 2 | 渐进披露检索 | `GET /knowledge-bases/{kb_id}/documents` 得标题列表 → 按标题与任务相关性决定要读哪些 → 对需阅读的项 `GET /knowledge-bases/{kb_id}/documents/{doc_id}` 取 `content` → 基于正文回复或执行任务 |
 | 3 | 文档管理（按需） | 当用户要求“保存记忆/规则/结论”等时：新建 `POST .../documents/create`，或更新 `PATCH .../documents/{doc_id}`，删除 `DELETE .../documents/{doc_id}`（需写权限） |
