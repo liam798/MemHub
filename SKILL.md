@@ -11,7 +11,7 @@ MemHub —— 面向 AI Agent 接入的记忆仓库。
 ## Agent 必读（速查）
 
 - **认证**：每次请求 Header 必须带 `X-API-Key`。优先从 `~/.memhub/credentials.json` 读取 `api_key`；若无或无效则提示用户先访问登录页 `__MEMHUB_ORIGIN__/login` 登录，再到 MemHub 面板复制 API Key 并提供给你。
-- **BASE_URL**：接口根地址为 `{MemHub 前端域名}/api`，例如 `https://memhub.example.com/api`。本地开发多为 `http://localhost:3100/api`（前端代理到后端）。
+- **BASE_URL**：接口根地址为 `__MEMHUB_ORIGIN__/api`。
 - **每次响应用户前必做**：1）按项目/工作区名关联知识库（`GET /knowledge-bases?name=...`，无则创建）；2）渐进披露检索——先 `GET /knowledge-bases/{kb_id}/documents` 拿文档标题，再按需 `GET .../documents/{doc_id}` 拉取正文，基于正文回复或执行任务。**不调用 RAG 问答接口。**
 - **错误处理**：`401` → 提示用户先访问 `__MEMHUB_ORIGIN__/login` 登录，并在右上角用户菜单 → API Key 中查看/生成后提供；`403` → 无该知识库/文档权限；`404` → 知识库或文档不存在。
 
