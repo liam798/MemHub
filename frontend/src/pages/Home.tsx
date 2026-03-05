@@ -1,16 +1,13 @@
-import { useState, useEffect, useLayoutEffect, useRef } from "react";
-import { createPortal } from "react-dom";
-import { Link } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { kbApi, KnowledgeBase } from "../api/knowledgeBase";
 import { activityApi, Activity } from "../api/activity";
+import ChatComposer from "../components/ChatComposer";
 
 type KbListTab = "public" | "joined";
 
 export default function Home() {
   const [selectedKbIds, setSelectedKbIds] = useState<number[]>([]);
-  const [kbSelectOpen, setKbSelectOpen] = useState(false);
-  const [kbSelectSearch, setKbSelectSearch] = useState("");
-  const kbSelectRef = useRef<HTMLDivElement>(null);
   const [listJoined, setListJoined] = useState<KnowledgeBase[]>([]);
   const [listPublic, setListPublic] = useState<KnowledgeBase[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,16 +18,13 @@ export default function Home() {
   const [error, setError] = useState("");
   const [kbListTab, setKbListTab] = useState<KbListTab>("joined");
   const [searchQuery, setSearchQuery] = useState("");
-  const [aiQuestion, setAiQuestion] = useState("");
-  const [aiAnswer, setAiAnswer] = useState("");
-  const aiLoading = false;
+  const [composerQuestion, setComposerQuestion] = useState("");
   const [feedScope, setFeedScope] = useState<"all" | "mine">("all");
   const [activityList, setActivityList] = useState<Activity[]>([]);
   const [activityLoading, setActivityLoading] = useState(false);
   const [feedFilterOpen, setFeedFilterOpen] = useState(false);
-  const [inputFocused, setInputFocused] = useState(false);
   const feedFilterRef = useRef<HTMLDivElement>(null);
-  const kbTriggerRef = useRef<HTMLButtonElement>(null);
+  const navigate = useNavigate();
 
   const list = kbListTab === "joined" ? listJoined : listPublic;
 
@@ -52,40 +46,15 @@ export default function Home() {
     loadBoth();
   }, []);
 
-  const [kbDropdownStyle, setKbDropdownStyle] = useState({ top: 0, left: 0 });
-  const updateKbDropdownPos = () => {
-    if (kbTriggerRef.current) {
-      const rect = kbTriggerRef.current.getBoundingClientRect();
-      setKbDropdownStyle({ top: rect.bottom + 4, left: rect.left });
-    }
-  };
-  useLayoutEffect(() => {
-    if (kbSelectOpen) {
-      updateKbDropdownPos();
-      window.addEventListener("scroll", updateKbDropdownPos, true);
-      window.addEventListener("resize", updateKbDropdownPos);
-      return () => {
-        window.removeEventListener("scroll", updateKbDropdownPos, true);
-        window.removeEventListener("resize", updateKbDropdownPos);
-      };
-    }
-  }, [kbSelectOpen]);
-
   useEffect(() => {
     const onOutside = (e: MouseEvent) => {
-      if (kbSelectRef.current && !kbSelectRef.current.contains(e.target as Node)) {
-        const target = e.target as Node;
-        const portal = document.getElementById("kb-select-portal");
-        if (portal?.contains(target)) return;
-        setKbSelectOpen(false);
-      }
       if (feedFilterRef.current && !feedFilterRef.current.contains(e.target as Node)) {
         setFeedFilterOpen(false);
       }
     };
     document.addEventListener("mousedown", onOutside);
     return () => document.removeEventListener("mousedown", onOutside);
-  }, [kbSelectOpen, feedFilterOpen]);
+  }, []);
 
   const loadActivities = async () => {
     setActivityLoading(true);
@@ -131,30 +100,10 @@ export default function Home() {
       )
     : list;
 
-  const handleAsk = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!aiQuestion.trim()) return;
-    setAiAnswer("正在开发中...");
-  };
-
-  const publicOnly = listPublic.filter((kb) => !listJoined.some((j) => j.id === kb.id));
-  const filterBySearch = (kbs: KnowledgeBase[]) =>
-    kbSelectSearch.trim()
-      ? kbs.filter(
-          (kb) =>
-            kb.name.toLowerCase().includes(kbSelectSearch.toLowerCase()) ||
-            (kb.owner_username || "").toLowerCase().includes(kbSelectSearch.toLowerCase())
-        )
-      : kbs;
-  const kbSelectJoinedFiltered = filterBySearch(listJoined);
-  const kbSelectPublicFiltered = filterBySearch(publicOnly);
-  const kbSelectHasResults = kbSelectJoinedFiltered.length > 0 || kbSelectPublicFiltered.length > 0;
-  const getKbById = (id: number) => listJoined.find((k) => k.id === id) ?? listPublic.find((k) => k.id === id);
-
-  const toggleKb = (id: number) => {
-    setSelectedKbIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
+  const handleAsk = (question: string, kbIds: number[]) => {
+    const payload = { question, kbIds };
+    setComposerQuestion("");
+    navigate("/chat", { state: payload });
   };
 
   const formatRelativeTime = (iso: string) => {
@@ -308,178 +257,14 @@ export default function Home() {
 
           {/* AI 会话区 */}
           <div className="mb-8">
-            <form
+            <ChatComposer
+              value={composerQuestion}
+              onChange={setComposerQuestion}
               onSubmit={handleAsk}
-              className={`bg-white border rounded-xl overflow-hidden flex flex-col transition-all ${
-                inputFocused ? "ring-1 ring-primary-500 border-primary-500" : "border-slate-300"
-              }`}
-            >
-              <textarea
-                value={aiQuestion}
-                onChange={(e) => setAiQuestion(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    const form = (e.target as HTMLTextAreaElement).form;
-                    if (form && aiQuestion.trim() && !aiLoading) form.requestSubmit();
-                  }
-                }}
-                onFocus={() => setInputFocused(true)}
-                onBlur={() => setInputFocused(false)}
-                placeholder="输入你的问题..."
-                className="w-full px-4 py-3 text-sm resize-none focus:outline-none focus:ring-0 border-0 placeholder:text-slate-500"
-                rows={4}
-                disabled={aiLoading}
-              />
-              <div className="flex items-center justify-between gap-2 px-3 py-2">
-                <div className="relative" ref={kbSelectRef}>
-                  <button
-                    ref={kbTriggerRef}
-                    type="button"
-                    onClick={() => setKbSelectOpen((o) => !o)}
-                    className="inline-flex items-center gap-2 pl-3 pr-2 py-1.5 border border-slate-200 rounded-lg text-sm bg-white text-slate-600 hover:border-slate-300 min-w-[140px]"
-                  >
-                    <span className="w-4 h-4 shrink-0 text-slate-500 flex items-center justify-center">
-                      <svg className="w-full h-full" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-                        <path d="M12 6v12" />
-                        <path d="M10 18l2-3 2 3" />
-                      </svg>
-                    </span>
-                    <span className="flex-1 min-w-0 truncate text-left">
-                      {selectedKbIds.length === 0
-                        ? "全部知识库"
-                        : selectedKbIds.length === 1
-                          ? (() => {
-                              const k = getKbById(selectedKbIds[0]);
-                              return k ? (k.owner_username ? `${k.owner_username}/${k.name}` : k.name) : "已选 1 个";
-                            })()
-                          : `已选 ${selectedKbIds.length} 个`}
-                    </span>
-                    <svg className="w-4 h-4 shrink-0 ml-auto text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                  {kbSelectOpen &&
-                    createPortal(
-                      <div
-                        id="kb-select-portal"
-                        className="fixed w-72 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden z-[100]"
-                        style={{ top: kbDropdownStyle.top, left: kbDropdownStyle.left }}
-                      >
-                        <div className="p-3 border-b border-slate-100">
-                          <h3 className="text-sm font-medium text-slate-800 mb-2">选择知识库</h3>
-                          <div className="relative">
-                            <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                            <input
-                              type="text"
-                              value={kbSelectSearch}
-                              onChange={(e) => setKbSelectSearch(e.target.value)}
-                              placeholder="搜索"
-                              className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                            />
-                          </div>
-                        </div>
-                        <div className="max-h-64 overflow-y-auto">
-                          {!kbSelectHasResults ? (
-                            <div className="py-6 text-center text-sm text-slate-500">无匹配结果</div>
-                          ) : (
-                            <>
-                              {kbSelectJoinedFiltered.length > 0 && (
-                                <div className="py-1">
-                                  {kbSelectJoinedFiltered.map((kb) => {
-                                    const checked = selectedKbIds.includes(kb.id);
-                                    return (
-                                      <label
-                                        key={kb.id}
-                                        className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-slate-50 border-l-2 ${
-                                          checked ? "bg-slate-50 border-primary-500" : "border-transparent"
-                                        }`}
-                                      >
-                                        <input
-                                          type="checkbox"
-                                          checked={checked}
-                                          onChange={() => toggleKb(kb.id)}
-                                          className="rounded border-slate-300 text-primary-600 focus:ring-primary-500"
-                                        />
-                                        <span className="w-5 h-5 min-w-5 flex items-center justify-center shrink-0 text-slate-500">
-                                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-                                            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-                                            <path d="M12 6v12" />
-                                            <path d="M10 18l2-3 2 3" />
-                                          </svg>
-                                        </span>
-                                        <span className="text-sm text-slate-700 truncate">
-                                          {kb.owner_username ? `${kb.owner_username}/${kb.name}` : kb.name}
-                                        </span>
-                                      </label>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                              {kbSelectPublicFiltered.length > 0 && (
-                                <div className="py-1 border-t border-slate-100">
-                                  <div className="px-3 py-1.5 text-xs font-medium text-slate-500">公开知识库</div>
-                                  {kbSelectPublicFiltered.map((kb) => {
-                                    const checked = selectedKbIds.includes(kb.id);
-                                    return (
-                                      <label
-                                        key={kb.id}
-                                        className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-slate-50 border-l-2 ${
-                                          checked ? "bg-slate-50 border-primary-500" : "border-transparent"
-                                        }`}
-                                      >
-                                        <input
-                                          type="checkbox"
-                                          checked={checked}
-                                          onChange={() => toggleKb(kb.id)}
-                                          className="rounded border-slate-300 text-primary-600 focus:ring-primary-500"
-                                        />
-                                        <span className="w-5 h-5 min-w-5 flex items-center justify-center shrink-0 text-slate-500">
-                                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-                                            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-                                            <path d="M12 6v12" />
-                                            <path d="M10 18l2-3 2 3" />
-                                          </svg>
-                                        </span>
-                                        <span className="text-sm text-slate-700 truncate">
-                                          {kb.owner_username ? `${kb.owner_username}/${kb.name}` : kb.name}
-                                        </span>
-                                      </label>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      </div>,
-                      document.body
-                    )}
-                </div>
-                <button
-                  type="submit"
-                  disabled={aiLoading || !aiQuestion.trim()}
-                  className="p-2.5 text-primary-600 hover:bg-primary-50 rounded-lg disabled:opacity-50"
-                  title="Enter 发送、Shift+Enter 换行"
-                >
-                  <svg className="w-6 h-6 rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                  </svg>
-                </button>
-              </div>
-            </form>
-            {aiAnswer && (
-              <div className="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
-                <h4 className="text-sm font-medium text-slate-600 mb-2">回答</h4>
-                <p className="text-slate-700 text-sm whitespace-pre-wrap">{aiAnswer}</p>
-              </div>
-            )}
+              selectedKbIds={selectedKbIds}
+              onSelectedKbIdsChange={setSelectedKbIds}
+              knowledgeBases={{ joined: listJoined, public: listPublic }}
+            />
           </div>
 
           {/* 动态时间线 */}
