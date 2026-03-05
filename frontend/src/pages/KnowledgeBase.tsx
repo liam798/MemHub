@@ -1,12 +1,16 @@
 import { lazy, Suspense, useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import ReactMarkdown from "react-markdown";
 import "@uiw/react-md-editor/markdown-editor.css";
+import "@uiw/react-markdown-preview/markdown.css";
 import { kbApi, KnowledgeBase as KB, Document, Member } from "../api/knowledgeBase";
 import { usersApi } from "../api/users";
 import { useAuth } from "../context/AuthContext";
 
 const MarkdownEditor = lazy(() => import("@uiw/react-md-editor"));
+const MarkdownPreview = lazy(async () => {
+  const module = await import("@uiw/react-md-editor");
+  return { default: module.default.Markdown };
+});
 
 function formatSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -829,11 +833,13 @@ export default function KnowledgeBase() {
               <h2 className="text-lg font-semibold text-slate-800 truncate">{viewTitle.replace(/\.md$/i, "")}</h2>
               <button type="button" onClick={() => setShowViewModal(false)} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 shrink-0">✕</button>
             </div>
-            <div className="flex-1 overflow-auto border border-slate-200 rounded-lg p-4 bg-slate-50 min-h-[200px] text-slate-700 text-sm [&_h1]:text-xl [&_h1]:font-semibold [&_h2]:text-lg [&_h2]:font-semibold [&_h3]:text-base [&_h3]:font-medium [&_p]:my-2 [&_ul]:my-2 [&_ul]:pl-6 [&_ol]:my-2 [&_ol]:pl-6 [&_pre]:bg-slate-200 [&_pre]:p-3 [&_pre]:rounded [&_pre]:overflow-auto [&_code]:bg-slate-100 [&_code]:px-1 [&_code]:rounded">
+            <div data-color-mode="light" className="flex-1 overflow-auto border border-slate-200 rounded-lg p-4 bg-white min-h-[200px]">
               {viewLoading ? (
                 <p className="text-slate-500 text-sm">加载中...</p>
               ) : viewContent ? (
-                <ReactMarkdown>{viewContent}</ReactMarkdown>
+                <Suspense fallback={<p className="text-slate-500 text-sm">渲染中...</p>}>
+                  <MarkdownPreview source={viewContent} />
+                </Suspense>
               ) : (
                 <p className="text-slate-500 text-sm">(无内容)</p>
               )}
