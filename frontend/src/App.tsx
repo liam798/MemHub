@@ -8,6 +8,7 @@ const Register = lazy(() => import("./pages/Register"));
 const Home = lazy(() => import("./pages/Home"));
 const KnowledgeBase = lazy(() => import("./pages/KnowledgeBase"));
 const Admin = lazy(() => import("./pages/Admin"));
+const Chat = lazy(() => import("./pages/Chat"));
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -39,6 +40,7 @@ export default function App() {
           }
         >
           <Route index element={<Home />} />
+          <Route path="chat" element={<Chat />} />
           <Route path="kb/:id" element={<KnowledgeBase />} />
           <Route
             path="admin"
