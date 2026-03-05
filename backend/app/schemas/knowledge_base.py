@@ -1,12 +1,20 @@
 """知识库相关模式"""
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from app.models.knowledge_base import Visibility, MemberRole
 
 
 class KnowledgeBaseCreate(BaseModel):
     name: str = Field(min_length=1, max_length=128)
-    description: str = Field(default="", max_length=2000)
+    description: str = Field(min_length=1, max_length=2000)
     visibility: Visibility = Visibility.PRIVATE
+
+    @field_validator("name", "description")
+    @classmethod
+    def must_not_be_blank(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("不能为空")
+        return value
 
 
 class KnowledgeBaseUpdate(BaseModel):

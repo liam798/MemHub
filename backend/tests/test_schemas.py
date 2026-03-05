@@ -3,6 +3,7 @@ import unittest
 from pydantic import ValidationError
 
 from app.core.config import settings
+from app.schemas.knowledge_base import KnowledgeBaseCreate
 from app.schemas.rag import BatchQueryRequest, QueryResponse
 
 
@@ -30,6 +31,18 @@ class SchemaTests(unittest.TestCase):
 
         self.assertEqual(r1.sources, [{"content": "x"}])
         self.assertEqual(r2.sources, [])
+
+    def test_knowledge_base_create_requires_non_blank_name_and_description(self):
+        with self.assertRaises(ValidationError):
+            KnowledgeBaseCreate(name="kb", description="")
+        with self.assertRaises(ValidationError):
+            KnowledgeBaseCreate(name="   ", description="desc")
+        with self.assertRaises(ValidationError):
+            KnowledgeBaseCreate(name="kb", description="   ")
+
+        created = KnowledgeBaseCreate(name="  kb  ", description="  desc  ")
+        self.assertEqual(created.name, "kb")
+        self.assertEqual(created.description, "desc")
 
 
 if __name__ == "__main__":
