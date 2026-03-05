@@ -1,12 +1,26 @@
 import { lazy, Suspense, useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import ReactMarkdown from "react-markdown";
 import "@uiw/react-md-editor/markdown-editor.css";
+import "@uiw/react-markdown-preview/markdown.css";
 import { kbApi, KnowledgeBase as KB, Document, Member } from "../api/knowledgeBase";
 import { usersApi } from "../api/users";
 import { useAuth } from "../context/AuthContext";
 
 const MarkdownEditor = lazy(() => import("@uiw/react-md-editor"));
+const MarkdownPreview = lazy(async () => {
+  const module = await import("@uiw/react-md-editor");
+  return { default: module.default.Markdown };
+});
+
+function stripFrontMatterForPreview(content: string): string {
+  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
+  if (!match) return content;
+  const frontMatterBody = match[1] ?? "";
+  const hasYamlKeyValue = frontMatterBody
+    .split(/\r?\n/)
+    .some((line) => /^[A-Za-z0-9_-]+\s*:\s*.+$/.test(line.trim()));
+  return hasYamlKeyValue ? content.slice(match[0].length) : content;
+}
 
 function formatSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -747,7 +761,7 @@ export default function KnowledgeBase() {
       {/* 新建/编辑文档弹窗 - 与新建文档相同 UI（MD 编辑器） */}
       {showNoteModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+          <div className="bg-white rounded-xl p-6 w-full max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
             <h2 className="text-lg font-semibold mb-1">{noteDocId != null ? "编辑文档" : "新建文档"}</h2>
             <p className="text-sm text-slate-500 mb-4">将原文传给大模型，不参与向量检索，适合规则、记忆、审查事项等内容。</p>
             <form
@@ -795,6 +809,9 @@ export default function KnowledgeBase() {
                       onChange={(v) => setNoteContent(v ?? "")}
                       height={300}
                       preview="live"
+                      components={{
+                        preview: (source) => <MarkdownPreview source={stripFrontMatterForPreview(source ?? "")} />,
+                      }}
                     />
                   </Suspense>
                 </div>
@@ -829,11 +846,13 @@ export default function KnowledgeBase() {
               <h2 className="text-lg font-semibold text-slate-800 truncate">{viewTitle.replace(/\.md$/i, "")}</h2>
               <button type="button" onClick={() => setShowViewModal(false)} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 shrink-0">✕</button>
             </div>
-            <div className="flex-1 overflow-auto border border-slate-200 rounded-lg p-4 bg-slate-50 min-h-[200px] text-slate-700 text-sm [&_h1]:text-xl [&_h1]:font-semibold [&_h2]:text-lg [&_h2]:font-semibold [&_h3]:text-base [&_h3]:font-medium [&_p]:my-2 [&_ul]:my-2 [&_ul]:pl-6 [&_ol]:my-2 [&_ol]:pl-6 [&_pre]:bg-slate-200 [&_pre]:p-3 [&_pre]:rounded [&_pre]:overflow-auto [&_code]:bg-slate-100 [&_code]:px-1 [&_code]:rounded">
+            <div data-color-mode="light" className="flex-1 overflow-auto border border-slate-200 rounded-lg p-4 bg-white min-h-[200px]">
               {viewLoading ? (
                 <p className="text-slate-500 text-sm">加载中...</p>
               ) : viewContent ? (
-                <ReactMarkdown>{viewContent}</ReactMarkdown>
+                <Suspense fallback={<p className="text-slate-500 text-sm">渲染中...</p>}>
+                  <MarkdownPreview source={stripFrontMatterForPreview(viewContent)} />
+                </Suspense>
               ) : (
                 <p className="text-slate-500 text-sm">(无内容)</p>
               )}

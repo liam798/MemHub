@@ -28,6 +28,7 @@ from app.schemas.document import (
     UpdateDocumentRequest,
 )
 from app.models.document import Document, CONTENT_TYPE_RULE
+from app.utils.front_matter import parse_front_matter
 from app.services.knowledge_base import create_knowledge_base, add_member, update_member_role, remove_member
 from app.services.activity import record_activity
 from app.models.activity import ActivityAction
@@ -353,6 +354,7 @@ def list_documents(
             content_type=d.content_type or "",
             file_size=d.file_size or 0,
             chunk_count=d.chunk_count or 0,
+            header=parse_front_matter(d.content),
             created_at=d.created_at.isoformat() if d.created_at else None,
             updated_at=(d.updated_at or d.created_at).isoformat() if (d.updated_at or d.created_at) else None,
         )
@@ -385,6 +387,7 @@ def get_document(
         content_type=doc.content_type or "",
         file_size=doc.file_size or 0,
         chunk_count=doc.chunk_count or 0,
+        header=parse_front_matter(doc.content),
         created_at=doc.created_at.isoformat() if doc.created_at else None,
         updated_at=(doc.updated_at or doc.created_at).isoformat() if (doc.updated_at or doc.created_at) else None,
         content=doc.content or None,

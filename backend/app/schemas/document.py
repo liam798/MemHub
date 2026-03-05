@@ -1,4 +1,6 @@
 """文档相关模式"""
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -20,6 +22,7 @@ class DocumentResponse(BaseModel):
     content_type: str
     file_size: int
     chunk_count: int
+    header: dict[str, Any] = Field(default_factory=dict, description="Markdown 头部结构化字段（front matter）")
     created_at: str | None = None
     updated_at: str | None = None
 
