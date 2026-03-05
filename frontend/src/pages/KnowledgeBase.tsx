@@ -12,6 +12,16 @@ const MarkdownPreview = lazy(async () => {
   return { default: module.default.Markdown };
 });
 
+function stripFrontMatterForPreview(content: string): string {
+  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
+  if (!match) return content;
+  const frontMatterBody = match[1] ?? "";
+  const hasYamlKeyValue = frontMatterBody
+    .split(/\r?\n/)
+    .some((line) => /^[A-Za-z0-9_-]+\s*:\s*.+$/.test(line.trim()));
+  return hasYamlKeyValue ? content.slice(match[0].length) : content;
+}
+
 function formatSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -751,7 +761,7 @@ export default function KnowledgeBase() {
       {/* 新建/编辑文档弹窗 - 与新建文档相同 UI（MD 编辑器） */}
       {showNoteModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+          <div className="bg-white rounded-xl p-6 w-full max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
             <h2 className="text-lg font-semibold mb-1">{noteDocId != null ? "编辑文档" : "新建文档"}</h2>
             <p className="text-sm text-slate-500 mb-4">将原文传给大模型，不参与向量检索，适合规则、记忆、审查事项等内容。</p>
             <form
@@ -799,6 +809,9 @@ export default function KnowledgeBase() {
                       onChange={(v) => setNoteContent(v ?? "")}
                       height={300}
                       preview="live"
+                      components={{
+                        preview: (source) => <MarkdownPreview source={stripFrontMatterForPreview(source ?? "")} />,
+                      }}
                     />
                   </Suspense>
                 </div>
@@ -838,7 +851,7 @@ export default function KnowledgeBase() {
                 <p className="text-slate-500 text-sm">加载中...</p>
               ) : viewContent ? (
                 <Suspense fallback={<p className="text-slate-500 text-sm">渲染中...</p>}>
-                  <MarkdownPreview source={viewContent} />
+                  <MarkdownPreview source={stripFrontMatterForPreview(viewContent)} />
                 </Suspense>
               ) : (
                 <p className="text-slate-500 text-sm">(无内容)</p>
