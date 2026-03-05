@@ -22,6 +22,11 @@ export default function Layout() {
     navigate("/login");
   };
 
+  const handleGoAdmin = () => {
+    setUserMenuOpen(false);
+    navigate("/admin");
+  };
+
   const handleShowApiKey = async () => {
     setUserMenuOpen(false);
     setApiKeyModalOpen(true);
@@ -141,6 +146,14 @@ export default function Layout() {
                   >
                     API Key
                   </button>
+                  {user?.is_admin && (
+                    <button
+                      onClick={handleGoAdmin}
+                      className="w-full text-left px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
+                    >
+                      后台管理
+                    </button>
+                  )}
                   <button
                     onClick={handleLogout}
                     className="w-full text-left px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"

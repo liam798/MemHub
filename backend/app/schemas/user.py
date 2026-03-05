@@ -17,6 +17,7 @@ class UserResponse(BaseModel):
     id: int
     username: str
     email: str
+    is_admin: bool = False
     created_at: str | None = None
 
     class Config:

@@ -45,6 +45,15 @@ def get_current_user(
     raise credentials_exception
 
 
+def require_admin_user(
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> User:
+    """要求当前用户为系统管理员。"""
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="仅管理员可访问")
+    return current_user
+
+
 ROLE_ORDER = [MemberRole.READ, MemberRole.WRITE, MemberRole.ADMIN, MemberRole.OWNER]
 
 
@@ -61,6 +70,8 @@ def _get_member(kb_id: int, user_id: int, db: Session) -> KnowledgeBaseMember | 
 
 def has_kb_access(kb: KnowledgeBase, user: User, db: Session) -> bool:
     """用户是否有知识库访问权限（公开或成员）"""
+    if user.is_admin:
+        return True
     if kb.visibility.value == "public":
         return True
     if kb.owner_id == user.id:
@@ -70,6 +81,8 @@ def has_kb_access(kb: KnowledgeBase, user: User, db: Session) -> bool:
 
 def has_kb_role_at_least(kb: KnowledgeBase, user: User, db: Session, min_role: MemberRole) -> bool:
     """用户是否至少具有指定角色"""
+    if user.is_admin:
+        return True
     if kb.owner_id == user.id:
         return True
     member = _get_member(kb.id, user.id, db)
@@ -95,4 +108,4 @@ def require_kb_admin(kb: KnowledgeBase, user: User, db: Session) -> bool:
 
 def require_kb_owner(kb: KnowledgeBase, user: User) -> bool:
     """是否是所有者"""
-    return kb.owner_id == user.id
+    return kb.owner_id == user.id or user.is_admin

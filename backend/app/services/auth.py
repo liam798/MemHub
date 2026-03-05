@@ -6,7 +6,9 @@ from app.models.user import User
 def register_user(db, username: str, email: str, password: str) -> User:
     """注册新用户"""
     hashed = get_password_hash(password)
-    user = User(username=username, email=email, hashed_password=hashed)
+    # 第一个注册用户自动设为管理员
+    is_first_user = db.query(User.id).first() is None
+    user = User(username=username, email=email, hashed_password=hashed, is_admin=is_first_user)
     db.add(user)
     db.commit()
     db.refresh(user)

@@ -19,6 +19,7 @@ from app.api.knowledge_bases import router as kb_router
 from app.api.rag import router as rag_router
 from app.api.activities import router as activities_router
 from app.api.memory import router as memory_router
+from app.api.admin import router as admin_router
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,7 @@ app.include_router(kb_router, prefix=settings.API_V1_PREFIX)
 app.include_router(rag_router, prefix=settings.API_V1_PREFIX)
 app.include_router(activities_router, prefix=settings.API_V1_PREFIX)
 app.include_router(memory_router, prefix=settings.API_V1_PREFIX)
+app.include_router(admin_router, prefix=settings.API_V1_PREFIX)
 
 
 @app.middleware("http")

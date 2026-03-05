@@ -104,8 +104,14 @@ export default function Home() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    const trimmedName = name.trim();
+    const trimmedDescription = description.trim();
+    if (!trimmedName || !trimmedDescription) {
+      setError("名称和描述不能为空");
+      return;
+    }
     try {
-      await kbApi.create({ name, description, visibility });
+      await kbApi.create({ name: trimmedName, description: trimmedDescription, visibility });
       setShowModal(false);
       setName("");
       setDescription("");
@@ -605,6 +611,7 @@ export default function Home() {
                   onChange={(e) => setDescription(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                   rows={3}
+                  required
                 />
               </div>
               <div>

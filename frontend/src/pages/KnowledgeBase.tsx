@@ -187,7 +187,11 @@ export default function KnowledgeBase() {
     }
   };
 
-  const canManageMembers = kb && (kb.owner_id === currentUser?.id || members.some(m => m.user_id === currentUser?.id && (m.role === "admin" || m.role === "owner")));
+  const canManageMembers = kb && (
+    currentUser?.is_admin ||
+    kb.owner_id === currentUser?.id ||
+    members.some(m => m.user_id === currentUser?.id && (m.role === "admin" || m.role === "owner"))
+  );
 
   // 输入时自动搜索（防抖 300ms）
   useEffect(() => {
@@ -338,7 +342,7 @@ export default function KnowledgeBase() {
               <IconPencil />
             </button>
           )}
-          {kb.owner_id === currentUser?.id && (
+          {(kb.owner_id === currentUser?.id || currentUser?.is_admin) && (
             <button
               onClick={async () => {
                 if (!confirm("确定删除此知识库？")) return;
