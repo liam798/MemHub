@@ -34,6 +34,7 @@ def search_users(
             id=u.id,
             username=u.username,
             email=u.email,
+            is_admin=u.is_admin,
             created_at=u.created_at.isoformat() if u.created_at else None,
         )
         for u in users
