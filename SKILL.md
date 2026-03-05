@@ -50,7 +50,7 @@ curl -s "__MEMHUB_ORIGIN__/skill.md" > "$SKILL_DIR/SKILL.md"
 
 1. **确认 API Key**：每次发起 MemHub 请求前，Agent 必须主动尝试从 `~/.memhub/credentials.json` 读取 `api_key` 并使用；仅当该文件不存在、或 key 无效、或用户未提供时，才在回复中**既要**给出正文内容**也要**提示用户先访问 `__MEMHUB_ORIGIN__/login` 登录，再在面板「API Key」中查看并复制后提供给 Agent。
 2. **规则配置**：持有 API Key 后，将「每次响应用户前**必须先**对 MemHub 执行渐进式披露检索（列文档 → 按需拉正文）」写入或更新到全局规则（如 Cursor `.cursor/rules/RULE_MemHub.md`、Codex `.codex/AGENTS.md`）。
-3. **关联知识库（先全局披露，再项目关联）**：先调用 `GET /api/knowledge-bases?scope=all` 获取全部可访问知识库，基于知识库 `name` 与 `description` 做候选筛选（全局层）；然后再按当前项目/工作区名匹配“项目关联库”（项目层）。注意：`name` 查询参数仅匹配名称，不覆盖描述匹配，因此描述匹配必须基于 `scope=all` 全量结果在 Agent 侧完成。**若项目层与全局层均无匹配，Agent 可自动调用「创建知识库」接口，以当前项目/工作区名称为 `name` 创建新知识库（默认私有），再继续后续检索与文档管理。**
+3. **关联知识库（先全局披露，再项目关联）**：先调用 `GET /api/knowledge-bases?scope=all` 获取全部可访问知识库，基于知识库 `name` 与 `description` 做候选筛选（全局层）；然后再按当前项目/工作区名匹配“项目关联库”（项目层）。注意：`name` 查询参数仅匹配名称，不覆盖描述匹配，因此描述匹配必须基于 `scope=all` 全量结果在 Agent 侧完成。随后对候选库先执行“列文档标题→按需拉正文”核验是否满足当前需求。**仅当同时满足以下条件时，才允许调用「创建知识库」接口：A）现有可访问知识库（名称/描述+内部文档）不符合当前需求；B）当前任务确实需要新建/写入文档（例如保存规则、记忆、审查结论等持久化内容）。此时必须以当前项目/工作区名称创建“专属知识库”（默认 `private`）。纯检索/问答场景不得创建新知识库。**
 4. **冲突处理优先级（类 AGENTS 继承）**：当不同知识库文档出现冲突时，优先采用“项目关联库”的文档内容；无冲突时可合并采纳。同层冲突按 `updated_at` 较新的文档优先，并在输出中标注冲突与取舍依据。
 5. **渐进披露检索**（必做）：先列标题，再按需拉正文。
   - 用选定的 `kb_id` 调用 `GET /api/knowledge-bases/{kb_id}/documents` 得到文档列表（`id`、`filename` 等）。
@@ -115,7 +115,7 @@ X-API-Key: <api_key>
 
 返回列表每项含 `id`、`name`、`owner_username`、`document_count` 等。示例：`[{"id":1,"name":"my-kb","owner_username":"alice","document_count":3}]`。
 
-### 2. 创建知识库（按项目名自动创建）
+### 2. 创建知识库（仅在需写入且无匹配时创建工作区专属库）
 
 ```
 POST /api/knowledge-bases
@@ -125,7 +125,7 @@ Content-Type: application/json
 {"name": "知识库名称（如项目/工作区名）", "description": "可选描述", "visibility": "private|public"}
 ```
 
-当按项目名未匹配到任何知识库时，Agent 可调用此接口以当前项目/工作区名称创建知识库。`visibility` 默认为 `private`。返回新建知识库的 `id`、`name` 等，随后即可对该 `kb_id` 进行渐进披露检索与文档管理。
+仅当“现有可访问知识库（名称/描述与内部文档）均不符合当前需求”且“当前任务确实需要新建/写入文档”时，Agent 才可调用此接口，以当前项目/工作区名称创建**专属知识库**。`visibility` 默认为 `private`。返回新建知识库的 `id`、`name` 等，随后即可对该 `kb_id` 进行文档管理与后续检索。纯检索/问答场景禁止创建知识库。
 
 ### 3. 列出文档（渐进披露：先拿标题）
 
@@ -202,7 +202,7 @@ BASE_URL = "__MEMHUB_ORIGIN__/api"
 API_KEY = "用户提供的API_Key"
 HEADERS = {"X-API-Key": API_KEY, "Content-Type": "application/json"}
 
-# 1) 按项目名关联知识库，若无则创建
+# 1) 先按项目名关联知识库；仅在“需写入文档且无匹配”时创建工作区专属库
 def list_kbs(scope: str = "joined", name: str | None = None):
     params = {"scope": scope}
     if name:
@@ -241,6 +241,6 @@ def delete_document(kb_id: int, doc_id: int):
 
 | 步骤 | 动作 | 说明 |
 |------|------|------|
-| 1 | 关联知识库 | 先 `GET /knowledge-bases?scope=all` 按知识库标题+描述做全局披露筛选，再按项目名做项目关联；发生冲突时以项目关联库文档为准；仍无匹配则 `POST /knowledge-bases` 创建并使用返回 `id` |
+| 1 | 关联知识库 | 先 `GET /knowledge-bases?scope=all` 按知识库标题+描述做全局披露筛选，再按项目名做项目关联，并用“列文档标题→按需拉正文”核验匹配性；发生冲突时以项目关联库文档为准；仅当“确需写入文档且无匹配”时才 `POST /knowledge-bases` 创建当前工作区专属库 |
 | 2 | 渐进披露检索 | `GET /knowledge-bases/{kb_id}/documents` 得标题列表 → 按标题与任务相关性决定要读哪些 → 对需阅读的项 `GET /knowledge-bases/{kb_id}/documents/{doc_id}` 取 `content` → 基于正文回复或执行任务 |
 | 3 | 文档管理（按需） | 当用户要求“保存记忆/规则/结论”等时：新建 `POST .../documents/create`，或更新 `PATCH .../documents/{doc_id}`，删除 `DELETE .../documents/{doc_id}`（需写权限） |
