@@ -143,6 +143,8 @@ def create(
     db: Annotated[Session, Depends(get_db)],
 ):
     """创建知识库"""
+    if data.visibility == Visibility.PUBLIC and not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="仅系统管理员可创建公开知识库")
     kb = create_knowledge_base(db, current_user, data.name, data.description, data.visibility)
     record_activity(db, current_user.id, ActivityAction.CREATE_KB, kb.id, {"name": kb.name})
     return _kb_response(kb, owner_usernames={current_user.id: current_user.username})
@@ -194,6 +196,12 @@ def update(
     if data.description is not None:
         kb.description = data.description
     if data.visibility is not None:
+        if (
+            data.visibility == Visibility.PUBLIC
+            and kb.visibility != Visibility.PUBLIC
+            and not current_user.is_admin
+        ):
+            raise HTTPException(status_code=403, detail="仅系统管理员可将知识库设为公开")
         kb.visibility = data.visibility
     db.commit()
     db.refresh(kb)

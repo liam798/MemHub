@@ -3,10 +3,13 @@ import { Link, useNavigate } from "react-router-dom";
 import { kbApi, KnowledgeBase } from "../api/knowledgeBase";
 import { activityApi, Activity } from "../api/activity";
 import ChatComposer from "../components/ChatComposer";
+import { useAuth } from "../context/AuthContext";
 
 type KbListTab = "public" | "joined";
 
 export default function Home() {
+  const { user } = useAuth();
+  const isAdmin = Boolean(user?.is_admin);
   const [selectedKbIds, setSelectedKbIds] = useState<number[]>([]);
   const [listJoined, setListJoined] = useState<KnowledgeBase[]>([]);
   const [listPublic, setListPublic] = useState<KnowledgeBase[]>([]);
@@ -69,6 +72,12 @@ export default function Home() {
   useEffect(() => {
     loadActivities();
   }, [feedScope]);
+
+  useEffect(() => {
+    if (showModal && !isAdmin) {
+      setVisibility("private");
+    }
+  }, [showModal, isAdmin]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -407,9 +416,18 @@ export default function Home() {
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="private">私有</option>
-                  <option value="public">公开</option>
+                  {isAdmin ? (
+                    <option value="public">公开</option>
+                  ) : (
+                    <option value="public" disabled>
+                      公开（仅管理员可设置）
+                    </option>
+                  )}
                 </select>
-                <p className="text-xs text-slate-500 mt-1">私有：仅您和受邀成员可访问；公开：所有人可查看</p>
+                <p className="text-xs text-slate-500 mt-1">
+                  私有：仅您和受邀成员可访问；
+                  公开：所有人可查看（需系统管理员设置）
+                </p>
               </div>
               {error && <p className="text-sm text-red-600">{error}</p>}
               <div className="flex gap-2 justify-end">
