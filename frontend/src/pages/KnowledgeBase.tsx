@@ -301,27 +301,31 @@ export default function KnowledgeBase() {
               {kb.owner_username ? `${kb.owner_username}/${kb.name}` : kb.name}
             </h1>
               {canManageMembers ? (
-                <select
-                  value={kb.visibility}
-                  onChange={async (e) => {
-                    const v = e.target.value as "public" | "private";
-                    try {
-                      await kbApi.update(kbId, { visibility: v });
-                      load();
-                    } catch {
-                      alert("更新失败");
-                    }
-                  }}
-                  className="px-2 py-0.5 border border-slate-200 rounded text-slate-600 bg-white text-sm"
-                >
-                  <option value="private">私有</option>
-                  <option value="public" disabled={!currentUser?.is_admin}>
-                    公开{!currentUser?.is_admin ? "（需管理员设置）" : ""}
-                  </option>
-                </select>
-                {!currentUser?.is_admin && (
-                  <p className="text-xs text-slate-500 mt-1">仅系统管理员可以将知识库设为公开。</p>
-                )}
+                <div className="flex flex-col items-start justify-center gap-1">
+                  <select
+                    value={kb.visibility}
+                    onChange={async (e) => {
+                      const v = e.target.value as "public" | "private";
+                      try {
+                        await kbApi.update(kbId, { visibility: v });
+                        load();
+                      } catch {
+                        alert("更新失败");
+                      }
+                    }}
+                    className="px-2 py-0.5 border border-slate-200 rounded text-slate-600 bg-white text-sm"
+                  >
+                    <option value="private">私有</option>
+                    <option value="public" disabled={!currentUser?.is_admin}>
+                      公开{!currentUser?.is_admin ? "（需管理员设置）" : ""}
+                    </option>
+                  </select>
+                  {!currentUser?.is_admin && (
+                    <p className="text-xs text-slate-500 leading-4">
+                      仅系统管理员可以将知识库设为公开。
+                    </p>
+                  )}
+                </div>
               ) : (
                 <span className="inline-flex px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-600">
                   {kb.visibility === "public" ? "公开" : "私有"}
