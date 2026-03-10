@@ -19,7 +19,7 @@ docker compose up -d --build
 echo ""
 echo "==> 服务已启动"
 echo "    前端: http://localhost:3100"
-echo "    后端: http://localhost:8000"
+echo "    后端: http://localhost:18000"
 echo "    查看状态: docker compose ps"
 echo "    查看日志: docker compose logs -f"
 echo "    停止服务: docker compose down"

@@ -1,6 +1,6 @@
 ---
 name: memhub
-version: 0.2.3
+version: 0.2.4
 description: 接入 MemHub 记忆仓库：Agent 做渐进式披露检索（先列文档标题，再按需拉取正文），适用于从公司/项目知识库获取信息、按规则执行或引用文档时使用。
 ---
 
@@ -13,7 +13,7 @@ MemHub —— 面向 AI Agent 接入的记忆仓库。
 - **认证**：每次请求 Header 必须带 `X-API-Key`。优先从 `~/.memhub/credentials.json` 读取 `api_key`；若无或无效则提示用户先访问登录页 `__MEMHUB_ORIGIN__/login` 登录，再到 MemHub 面板复制 API Key 并提供给你。
 - **BASE_URL**：接口根地址为 `__MEMHUB_ORIGIN__/api`。
 - **每次响应用户前必做**：1）先对全部可访问知识库做披露（`GET /knowledge-bases?scope=all`，基于知识库标题/描述筛选候选）；2）再做项目关联（按项目名匹配）；3）渐进披露检索——先 `GET /knowledge-bases/{kb_id}/documents` 拿文档标题，再按需 `GET .../documents/{doc_id}` 拉取正文，基于正文回复或执行任务。
-- **错误处理**：`401` → 提示用户先访问 `__MEMHUB_ORIGIN__/login` 登录，并在右上角用户菜单 → API Key 中查看/生成后提供；`403` → 无该知识库/文档权限；`404` → 知识库或文档不存在。
+- **错误处理**：`401` → 提示用户先访问 MemHub 前端登录页登录，并在右上角用户菜单 → API Key 中查看/生成后提供；`403` → 无该知识库/文档权限；`404` → 知识库或文档不存在。
 
 ## 技能文件
 
@@ -56,19 +56,6 @@ curl -s "__MEMHUB_ORIGIN__/skill.md" > "$SKILL_DIR/SKILL.md"
   - 用选定的 `kb_id` 调用 `GET /api/knowledge-bases/{kb_id}/documents` 得到文档列表（`id`、`filename` 等）。
   - **按需拉取正文**：优先拉取与用户问题、当前任务、当前项目直接相关的文档；对需要阅读的条目调用 `GET /api/knowledge-bases/{kb_id}/documents/{doc_id}` 获取 `content`，基于正文回复或执行任务。不要一次请求全部文档正文。
 6. **文档管理与持久化记忆**：当用户要求新建/修改/删除知识库内文档，或明确提出“帮我记住”“保存为规则/笔记”“写入记忆”等意图时，必须调用文档管理 API（仅 MD/笔记类）将信息写入对应知识库文档（新建或追加），见下文「文档管理 API」。
-
-## 输出规范
-
-当输出内容包含以下场景时，**来自 MemHub 知识库的内容必须单独成章/成节输出**，不要与常规内容混写在一起。
-
-- **Review 场景**：当有需要整改的内容时（当无整改项，不做任何额外的输出），在整体 Review 报告中追加一个小节，标题为「按 MemHub 知识库规则需整改：」。该小节只列出**依据知识库规则判断需要整改**的条目，不必罗列已符合或与本次任务无关的规则。每条按以下格式说明：
-  - **《规则文档名》** 具体规则/要求 → 当前问题或现象（可带路径、命令、报错等）→ **建议**：具体整改动作。
-  
-  **示例**：
-  ```
-  按 MemHub 知识库规则需整改：
-  - 《通用项目 Review 规则.md》 版本管理要求 → 当前工作区 /Users/liam/temp 执行 git status 报 "not a git repository" → 建议：立即在该目录运行 git init 或接入既有仓库，确保符合版本管理规范。
-  ```
 
 ## 获取 API Key
 
@@ -134,7 +121,7 @@ GET /api/knowledge-bases/{kb_id}/documents
 X-API-Key: <api_key>
 ```
 
-返回文档列表，每项含 `id`、`filename`（标题，MD 不含后缀）、`file_size`、`updated_at`。**Agent 先据此判断是否需要正文**：与用户问题或当前任务相关的标题建议拉取正文；再按需调用「获取文档详情」取 `content`，避免一次拉取全部。
+返回文档列表，每项含 `id`、`filename`（当前通常为带 `.md` 后缀的文件名）、`file_size`、`updated_at`。**Agent 先据此判断是否需要正文**：与用户问题或当前任务相关的标题建议拉取正文；再按需调用「获取文档详情」取 `content`，避免一次拉取全部。
 
 ### 4. 获取文档详情（按需拉取正文）
 

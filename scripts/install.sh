@@ -58,7 +58,7 @@ docker compose up -d --build
 echo ""
 echo "==> 安装完成，服务已启动"
 echo "    前端: http://localhost:3100"
-echo "    后端: http://localhost:8000"
+echo "    后端: http://localhost:18000"
 echo "    查看状态: cd $MEMHUB_HOME && docker compose ps"
 echo "    查看日志: cd $MEMHUB_HOME && docker compose logs -f"
 echo "    重启服务: cd $MEMHUB_HOME && ./scripts/startup.sh"
