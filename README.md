@@ -54,6 +54,76 @@ curl -fsSL https://raw.githubusercontent.com/liam798/MemHub/main/scripts/install
 - 前端：`http://localhost:3100`
 - 后端：`http://localhost:18000`
 
+## 参与贡献
+
+当前推荐的协作方式是：
+
+1. 在你自己的 fork 中开发
+2. 从 `main` 拉出短期功能分支
+3. 完成修改后推送到你的 fork
+4. 在 GitHub 上向主仓库 `main` 发起 Pull Request
+
+建议不要长期维护 `dev` 等集成分支；除 `main` 外，其余分支都应为短期分支。
+
+### 分支与提交流程
+
+```bash
+git checkout main
+git pull origin main
+git checkout -b feature/update-readme
+```
+
+完成修改后：
+
+```bash
+git status
+git add <files>
+git commit -m "补充贡献指南"
+git push origin feature/update-readme
+```
+
+随后在 GitHub 页面发起 Pull Request：
+
+- source：你的 fork 分支
+- target：主仓库 `main`
+
+### 提交建议
+
+- 每次提交只做一件相对完整的事情
+- 提交信息尽量直接描述结果
+- 避免把无关格式化、调试代码和临时文件混入提交
+- 如修改 API、脚本、文档或页面文案，请同步更新对应说明
+
+### 提交前自检
+
+前端构建：
+
+```bash
+cd frontend
+npm run build
+```
+
+后端测试：
+
+```bash
+cd backend
+python -m pytest
+```
+
+说明：
+
+- 当前仓库未单独提供后端开发依赖清单；若本地缺少 `pytest`，请先自行安装
+- 如果改动依赖 OpenAI 或数据库，请在 PR 中说明你的验证方式
+- 如果未运行某项检查，请在 PR 描述中写明原因
+
+### 文档同步要求
+
+如果代码行为发生变化，请同步检查这些文件是否需要更新：
+
+- `README.md`
+- `SKILL.md`
+- `scripts/` 下启动和部署脚本中的提示文案
+
 ## 源码开发（本机运行）
 
 ### 环境要求
