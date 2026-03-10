@@ -1,6 +1,6 @@
 ---
 name: memhub
-version: 0.2.3
+version: 0.2.4
 description: 接入 MemHub 记忆仓库：Agent 做渐进式披露检索（先列文档标题，再按需拉取正文），适用于从公司/项目知识库获取信息、按规则执行或引用文档时使用。
 ---
 
@@ -13,7 +13,7 @@ MemHub —— 面向 AI Agent 接入的记忆仓库。
 - **认证**：每次请求 Header 必须带 `X-API-Key`。优先从 `~/.memhub/credentials.json` 读取 `api_key`；若无或无效则提示用户先访问登录页 `__MEMHUB_ORIGIN__/login` 登录，再到 MemHub 面板复制 API Key 并提供给你。
 - **BASE_URL**：接口根地址为 `__MEMHUB_ORIGIN__/api`。
 - **每次响应用户前必做**：1）先对全部可访问知识库做披露（`GET /knowledge-bases?scope=all`，基于知识库标题/描述筛选候选）；2）再做项目关联（按项目名匹配）；3）渐进披露检索——先 `GET /knowledge-bases/{kb_id}/documents` 拿文档标题，再按需 `GET .../documents/{doc_id}` 拉取正文，基于正文回复或执行任务。
-- **错误处理**：`401` → 提示用户先访问 `__MEMHUB_ORIGIN__/login` 登录，并在右上角用户菜单 → API Key 中查看/生成后提供；`403` → 无该知识库/文档权限；`404` → 知识库或文档不存在。
+- **错误处理**：`401` → 提示用户先访问 MemHub 前端登录页登录，并在右上角用户菜单 → API Key 中查看/生成后提供；`403` → 无该知识库/文档权限；`404` → 知识库或文档不存在。
 
 ## 技能文件
 
@@ -121,7 +121,7 @@ GET /api/knowledge-bases/{kb_id}/documents
 X-API-Key: <api_key>
 ```
 
-返回文档列表，每项含 `id`、`filename`（标题，MD 不含后缀）、`file_size`、`updated_at`。**Agent 先据此判断是否需要正文**：与用户问题或当前任务相关的标题建议拉取正文；再按需调用「获取文档详情」取 `content`，避免一次拉取全部。
+返回文档列表，每项含 `id`、`filename`（当前通常为带 `.md` 后缀的文件名）、`file_size`、`updated_at`。**Agent 先据此判断是否需要正文**：与用户问题或当前任务相关的标题建议拉取正文；再按需调用「获取文档详情」取 `content`，避免一次拉取全部。
 
 ### 4. 获取文档详情（按需拉取正文）
 
