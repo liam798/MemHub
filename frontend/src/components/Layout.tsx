@@ -116,6 +116,19 @@ export default function Layout() {
 
         {/* 右侧：用户 */}
         <div className="ml-auto flex items-center gap-4">
+          <a
+            href="https://github.com/Valiant-Cat/MemHub"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+            aria-label="GitHub 仓库"
+            title="查看 GitHub 仓库"
+          >
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 2C6.477 2 2 6.589 2 12.248c0 4.526 2.865 8.366 6.839 9.72.5.095.682-.222.682-.494 0-.244-.009-.89-.014-1.747-2.782.617-3.369-1.39-3.369-1.39-.455-1.18-1.11-1.494-1.11-1.494-.908-.637.069-.624.069-.624 1.004.072 1.532 1.054 1.532 1.054.892 1.566 2.341 1.114 2.91.852.091-.664.349-1.114.635-1.37-2.22-.259-4.555-1.136-4.555-5.056 0-1.117.389-2.032 1.029-2.749-.103-.26-.446-1.304.098-2.719 0 0 .84-.276 2.75 1.05A9.303 9.303 0 0 1 12 6.837a9.27 9.27 0 0 1 2.504.35c1.909-1.326 2.748-1.05 2.748-1.05.546 1.415.202 2.459.1 2.719.64.717 1.027 1.632 1.027 2.749 0 3.93-2.339 4.793-4.566 5.047.359.319.679.948.679 1.911 0 1.379-.012 2.49-.012 2.829 0 .274.18.594.688.493A10.27 10.27 0 0 0 22 12.248C22 6.589 17.523 2 12 2Z" />
+            </svg>
+            <span>GitHub</span>
+          </a>
           <div className="relative">
             <button
               onClick={() => setUserMenuOpen(!userMenuOpen)}
