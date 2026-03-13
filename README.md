@@ -124,6 +124,19 @@ python -m pytest
 - `SKILL.md`
 - `scripts/` 下启动和部署脚本中的提示文案
 
+## Mission Control 子项目
+
+- 已将上游 `crshdn/mission-control` 源码纳入仓库目录：`mission-control/`
+- MemHub 顶栏中的 `Mission Control` 按钮默认跳转到 `http://localhost:4000`
+- 启动方式：在仓库根目录执行 `docker compose up -d --build mission-control`，或进入 `mission-control/` 单独运行
+- 已配置上游 remote：`mission-control-upstream`
+- 后续同步上游更新可执行：`git fetch mission-control-upstream && git subtree pull --prefix=mission-control mission-control-upstream main --squash`
+
+## 规划文档
+
+- `docs/memhub-v2-agent-control-plane.md`：MemHub v2 产品定位、企业级 Agent 基础架构图、分阶段落地路线图
+- `docs/memhub-agent-profile-runtime-design.md`：AgentProfile / AgentRuntime 分层设计、Mission Control 改版方案、API 草案
+
 ## 源码开发（本机运行）
 
 ### 环境要求
