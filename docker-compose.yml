@@ -45,6 +45,8 @@ services:
     build:
       context: ./mission-control
       dockerfile: Dockerfile
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     env_file:
       - path: ./mission-control/.env
         required: false

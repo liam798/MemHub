@@ -6,8 +6,6 @@ import { authApi } from "../api/auth";
 type CopyTarget = "apiKey" | "agentPrompt";
 type CopyStatus = { target: CopyTarget; kind: "success" | "error"; message: string } | null;
 
-const EXTERNAL_MISSION_CONTROL_URL = "http://localhost:4000";
-
 export default function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -103,6 +101,10 @@ export default function Layout() {
 
   const copyApiKey = () => copyText(apiKey || "", "apiKey");
   const copyAgentPrompt = () => copyText(agentPrompt, "agentPrompt");
+  const missionControlUrl =
+    typeof window !== "undefined"
+      ? `${window.location.protocol}//${window.location.hostname}:4000`
+      : "http://localhost:4000";
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
@@ -114,7 +116,7 @@ export default function Layout() {
 
         <div className="ml-auto flex items-center gap-4">
           <a
-            href={EXTERNAL_MISSION_CONTROL_URL}
+            href={missionControlUrl}
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
