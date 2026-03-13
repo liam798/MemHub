@@ -41,5 +41,27 @@ services:
       - "3100:80"
     restart: unless-stopped
 
+  mission-control:
+    build:
+      context: ./mission-control
+      dockerfile: Dockerfile
+    env_file:
+      - path: ./mission-control/.env
+        required: false
+    environment:
+      NODE_ENV: production
+      DATABASE_PATH: /app/data/mission-control.db
+      WORKSPACE_BASE_PATH: /app/workspace
+      PROJECTS_PATH: /app/workspace/projects
+      OPENCLAW_GATEWAY_URL: ws://host.docker.internal:18789
+    ports:
+      - "4000:4000"
+    volumes:
+      - mission_control_data:/app/data
+      - mission_control_workspace:/app/workspace
+    restart: unless-stopped
+
 volumes:
   memhub_pg_data:
+  mission_control_data:
+  mission_control_workspace:
