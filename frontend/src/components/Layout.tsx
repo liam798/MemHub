@@ -93,29 +93,43 @@ export default function Layout() {
     }
   };
 
-  const baseUrl =
-    typeof window !== "undefined" ? window.location.origin : "";
+  const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
   const agentPrompt =
     apiKey && baseUrl
       ? `Read ${baseUrl}/skill.md and follow the instructions to join MemHub.\n\nIf access fails, try without proxy (e.g. curl --noproxy '*' -fsSL ${baseUrl}/skill.md\n\nUse this API Key: ${apiKey}).`
       : "";
 
   const copyApiKey = () => copyText(apiKey || "", "apiKey");
-
   const copyAgentPrompt = () => copyText(agentPrompt, "agentPrompt");
+  const missionControlUrl =
+    typeof window !== "undefined"
+      ? `${window.location.protocol}//${window.location.hostname}:4000`
+      : "http://localhost:4000";
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
-      {/* 顶部导航栏 */}
       <header className="h-14 border-b border-slate-200 flex items-center px-6 shrink-0" style={{ backgroundColor: "#f7f8fa" }}>
-        {/* 左侧 Logo */}
         <Link to="/" className="flex items-center gap-2 shrink-0">
           <img src="/favicon.svg" alt="MemHub" className="w-8 h-8 rounded-lg shrink-0" />
           <span className="font-bold text-xl text-slate-900">MemHub</span>
         </Link>
 
-        {/* 右侧：用户 */}
         <div className="ml-auto flex items-center gap-4">
+          <a
+            href={missionControlUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+            aria-label="Mission Control"
+            title="打开 Mission Control"
+          >
+            <svg className="h-4 w-4 text-primary-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M14 3h7v7" />
+              <path d="M10 14 21 3" />
+              <path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5" />
+            </svg>
+            <span>Mission Control</span>
+          </a>
           <a
             href="https://github.com/Valiant-Cat/MemHub"
             target="_blank"
@@ -144,33 +158,21 @@ export default function Layout() {
             </button>
             {userMenuOpen && (
               <>
-                <div
-                  className="fixed inset-0 z-10"
-                  onClick={() => setUserMenuOpen(false)}
-                />
+                <div className="fixed inset-0 z-10" onClick={() => setUserMenuOpen(false)} />
                 <div className="absolute right-0 top-full mt-1 py-1 w-48 bg-white rounded-lg shadow-lg border border-slate-200 z-20">
                   <div className="px-4 py-2 border-b border-slate-100">
                     <div className="text-sm font-medium text-slate-800">{user?.username}</div>
                     <div className="text-xs text-slate-500 truncate">{user?.email}</div>
                   </div>
-                  <button
-                    onClick={handleShowApiKey}
-                    className="w-full text-left px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
-                  >
+                  <button onClick={handleShowApiKey} className="w-full text-left px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">
                     API Key
                   </button>
                   {user?.is_admin && (
-                    <button
-                      onClick={handleGoAdmin}
-                      className="w-full text-left px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
-                    >
+                    <button onClick={handleGoAdmin} className="w-full text-left px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">
                       后台管理
                     </button>
                   )}
-                  <button
-                    onClick={handleLogout}
-                    className="w-full text-left px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
-                  >
+                  <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">
                     退出登录
                   </button>
                 </div>
@@ -180,18 +182,13 @@ export default function Layout() {
         </div>
       </header>
 
-      {/* 主内容区 */}
       <main className="flex-1 overflow-auto">
         <Outlet />
       </main>
 
-      {/* API Key 弹窗 */}
       {apiKeyModalOpen && (
         <>
-          <div
-            className="fixed inset-0 bg-black/50 z-40"
-            onClick={() => setApiKeyModalOpen(false)}
-          />
+          <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setApiKeyModalOpen(false)} />
           <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-xl shadow-xl p-6 z-50">
             <h3 className="text-lg font-semibold text-slate-800 mb-2">API Key</h3>
             <p className="text-sm text-slate-600 mb-4">
@@ -202,12 +199,7 @@ export default function Layout() {
             ) : apiKey ? (
               <div className="space-y-3">
                 <div className="flex gap-2">
-                  <input
-                    type="text"
-                    readOnly
-                    value={apiKey}
-                    className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm font-mono bg-slate-50"
-                  />
+                  <input type="text" readOnly value={apiKey} className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm font-mono bg-slate-50" />
                   <button
                     onClick={copyApiKey}
                     className={`px-4 py-2 rounded-lg text-sm text-white font-medium transition-all duration-200 ${
@@ -220,14 +212,9 @@ export default function Layout() {
                   </button>
                 </div>
                 {copyStatus?.target === "apiKey" && (
-                  <p className={`text-xs ${copyStatus.kind === "success" ? "text-emerald-600" : "text-red-500"}`}>
-                    {copyStatus.message}
-                  </p>
+                  <p className={`text-xs ${copyStatus.kind === "success" ? "text-emerald-600" : "text-red-500"}`}>{copyStatus.message}</p>
                 )}
-                <button
-                  onClick={handleRegenerateApiKey}
-                  className="text-sm text-amber-600 hover:text-amber-700"
-                >
+                <button onClick={handleRegenerateApiKey} className="text-sm text-amber-600 hover:text-amber-700">
                   重新生成（旧 Key 将失效）
                 </button>
                 <div className="pt-3 border-t border-slate-100">
@@ -249,18 +236,13 @@ export default function Layout() {
                     {copyFeedback === "agentPrompt" ? "✓ 已复制" : "复制 Agent 提示词"}
                   </button>
                   {copyStatus?.target === "agentPrompt" && (
-                    <p className={`mt-2 text-xs ${copyStatus.kind === "success" ? "text-emerald-600" : "text-red-500"}`}>
-                      {copyStatus.message}
-                    </p>
+                    <p className={`mt-2 text-xs ${copyStatus.kind === "success" ? "text-emerald-600" : "text-red-500"}`}>{copyStatus.message}</p>
                   )}
                 </div>
               </div>
             ) : null}
             <div className="mt-4 flex justify-end">
-              <button
-                onClick={() => setApiKeyModalOpen(false)}
-                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
-              >
+              <button onClick={() => setApiKeyModalOpen(false)} className="px-4 py-2 rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50">
                 关闭
               </button>
             </div>
